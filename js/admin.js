@@ -1,4 +1,3 @@
-import HeaderComponent from './components/header.component.js';
 import AdminComponent from './components/admin.component.js';
 import store from './state/store.js';
 import authService from './services/auth.service.js';
@@ -57,9 +56,8 @@ class AdminApp {
 
       console.log('✅ User is admin, initializing admin panel');
 
-      // Initialize header
-      this.components.header = new HeaderComponent('header-root');
-      this.components.header.init();
+      // Setup admin header with user info
+      this.setupAdminHeader(state.user);
 
       // Ensure we have data
       await this.ensureAdminData();
@@ -74,6 +72,34 @@ class AdminApp {
       showNotification('Грешка при инициализация на администраторския панел', 'error');
       await new Promise(resolve => setTimeout(resolve, 2000));
       window.location.href = 'index.html';
+    }
+  }
+
+  setupAdminHeader(user) {
+    const userNameEl = document.getElementById('admin-user-name');
+    const logoutBtn = document.getElementById('admin-logout-btn');
+
+    if (userNameEl && user.displayName) {
+      userNameEl.textContent = user.displayName;
+    }
+
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        await this.logout();
+      });
+    }
+  }
+
+  async logout() {
+    try {
+      await authService.logout();
+      store.clearUser();
+      showNotification('Излязохте успешно', 'success');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      window.location.href = 'index.html';
+    } catch (error) {
+      console.error('Logout error:', error);
+      showNotification('Грешка при излизане', 'error');
     }
   }
 

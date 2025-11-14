@@ -71,15 +71,7 @@ npx http-server -p 8000
 
 1. **Регистрирайте се като администратор (първи път)**
    - Регистрирайте нов акаунт с произволен имейл и парола
-   - През конзолата на браузъра (F12), изпълнете:
-     ```javascript
-     // Отворете браузърната конзола и влезте с вашия акаунт, след това:
-     const uid = (await firebase.auth.currentUser.uid);
-     const db = firebase.firestore();
-     db.collection('users').doc(uid).update({ role: 'admin' });
-     // След това преразгрузете страницата
-     ```
-   - Или чрез Firebase Console: 
+   - Чрез Firebase Console: 
      - Отворете https://console.firebase.google.com
      - Отидете във вашия проект > Firestore Database > users колекция
      - Намерете потребителя и добавете поле `role: "admin"`

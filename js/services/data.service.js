@@ -7,6 +7,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -234,6 +235,134 @@ class DataService {
       }));
       callback(services);
     });
+  }
+
+  // User Booking Preferences
+  async updateUserBookingPreference(userId, preferences) {
+    try {
+      const usersCol = collection(db, 'users');
+      const userRef = doc(usersCol, userId);
+      
+      // Get existing preferences
+      const userDoc = await getDoc(userRef);
+      const existingPrefs = userDoc.exists() ? (userDoc.data().bookingPreferences || {}) : {};
+      
+      // Merge with new preferences
+      const updatedPrefs = { ...existingPrefs, ...preferences };
+      
+      // Update user document
+      await updateDoc(userRef, {
+        bookingPreferences: updatedPrefs,
+        updatedAt: new Date().toISOString()
+      });
+      
+      return updatedPrefs;
+    } catch (error) {
+      console.error('Update user booking preferences error:', error);
+      throw error;
+    }
+  }
+
+  async getUserBookingPreferences(userId) {
+    try {
+      const usersCol = collection(db, 'users');
+      const userRef = doc(usersCol, userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        return userDoc.data().bookingPreferences || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Get user booking preferences error:', error);
+      throw error;
+    }
+  }
+
+  // Global Settings
+  async updateSettings(settings) {
+    try {
+      const settingsCol = collection(db, 'settings');
+      const settingsRef = doc(settingsCol, 'global');
+      
+      // Get existing settings first
+      const existingDoc = await getDoc(settingsRef);
+      const existingSettings = existingDoc.exists() ? existingDoc.data() : {};
+      
+      // Merge settings
+      const mergedSettings = {
+        ...existingSettings,
+        ...settings,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Add createdAt if new document
+      if (!existingDoc.exists()) {
+        mergedSettings.createdAt = new Date().toISOString();
+      }
+      
+      // Use setDoc to create or update
+      await setDoc(settingsRef, mergedSettings);
+      
+      return settings;
+    } catch (error) {
+      console.error('Update settings error:', error);
+      throw error;
+    }
+  }
+
+  async getSettings() {
+    try {
+      const settingsCol = collection(db, 'settings');
+      const settingsRef = doc(settingsCol, 'global');
+      const settingsDoc = await getDoc(settingsRef);
+      
+      if (settingsDoc.exists()) {
+        return settingsDoc.data();
+      }
+      
+      // Return defaults if not found
+      return {
+        workHours: {
+          start: '09:00',
+          end: '18:00'
+        },
+        slotDuration: 30
+      };
+    } catch (error) {
+      console.error('Get settings error:', error);
+      return {
+        workHours: {
+          start: '09:00',
+          end: '18:00'
+        },
+        slotDuration: 30
+      };
+    }
+  }
+
+  // Subscribe to settings changes
+  subscribeToSettings(callback) {
+    try {
+      const settingsCol = collection(db, 'settings');
+      const settingsRef = doc(settingsCol, 'global');
+      
+      return onSnapshot(settingsRef, (doc) => {
+        if (doc.exists()) {
+          callback(doc.data());
+        } else {
+          callback({
+            workHours: {
+              start: '09:00',
+              end: '18:00'
+            },
+            slotDuration: 30
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Subscribe to settings error:', error);
+    }
   }
 }
 

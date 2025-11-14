@@ -54,6 +54,12 @@ class AdminComponent {
       case 'users':
         this.loadUsers();
         break;
+      case 'settings':
+        this.loadSettings().catch(error => {
+          console.error('Error loading settings:', error);
+          showNotification('Грешка при зареждане на настройките', 'error');
+        });
+        break;
     }
   }
 
@@ -84,8 +90,6 @@ class AdminComponent {
       document.getElementById('stat-today-bookings').textContent = stats.todayBookings;
       document.getElementById('stat-pending-bookings').textContent = stats.pending;
       document.getElementById('stat-confirmed-bookings').textContent = stats.confirmed;
-      document.getElementById('stat-monthly-revenue').textContent = 
-        `${stats.monthlyRevenue.toFixed(2)} лв`;
 
       // Load popular services
       await this.loadPopularServices(allBookings);
@@ -319,22 +323,35 @@ class AdminComponent {
   async loadBookings() {
     try {
       const allBookings = await bookingService.getAllBookings();
-      
-      const html = allBookings.map(booking => {
-        const statusClass = booking.status === 'cancelled' ? 'cancelled' :
-                           booking.status === 'confirmed' ? 'confirmed' :
-                           booking.status === 'completed' ? 'completed' : 'pending';
+      this.displayBookings(allBookings);
+      this.attachFilterListeners(allBookings);
+    } catch (error) {
+      console.error('Load bookings error:', error);
+      showNotification('Грешка при зареждане на резервациите', 'error');
+    }
+  }
 
-        return `
-          <div class="booking-item ${statusClass}" data-booking-id="${booking.id}">
+  displayBookings(bookings) {
+    const html = bookings.map(booking => {
+      const statusClass = booking.status === 'cancelled' ? 'cancelled' :
+                         booking.status === 'confirmed' ? 'confirmed' :
+                         booking.status === 'completed' ? 'completed' : 'pending';
+
+      return `
+        <div class="booking-item ${statusClass}" data-booking-id="${booking.id}">
+          <div class="booking-card-header">
             <div class="booking-info">
               <h3>${booking.userName}</h3>
               <p class="booking-service">${booking.serviceName}</p>
-              <p class="booking-date">${formatDate(booking.date)} в ${booking.time}</p>
-              <p class="booking-contact">${booking.userEmail} • ${booking.userPhone}</p>
             </div>
             <div class="booking-status">
               <span class="status-badge">${this.getStatusText(booking.status)}</span>
+            </div>
+          </div>
+          <div class="user-card-body">
+            <div class="booking-details">
+              <p class="booking-date"><i class="material-icons">event</i> ${formatDate(booking.date)} в ${booking.time}</p>
+              <p class="booking-contact"><i class="material-icons">email</i> ${booking.userEmail} • <i class="material-icons">phone</i> ${booking.userPhone}</p>
             </div>
             <div class="booking-actions">
               ${booking.status === 'pending' ? `
@@ -352,52 +369,85 @@ class AdminComponent {
               </button>
             </div>
           </div>
-        `;
-      }).join('');
+        </div>
+      `;
+    }).join('');
 
-      const list = document.getElementById('bookings-list');
-      list.innerHTML = html || '<p class="no-data">Няма резервации</p>';
+    const list = document.getElementById('bookings-list');
+    list.innerHTML = html || '<p class="no-data">Няма резервации</p>';
+    this.attachBookingActions(list);
+  }
 
-      // Attach event listeners
-      list.querySelectorAll('.confirm-booking').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const bookingId = btn.dataset.bookingId;
+  attachFilterListeners(allBookings) {
+    const filterDate = document.getElementById('filter-date');
+    const filterStatus = document.getElementById('filter-status');
+
+    const applyFilters = () => {
+      const selectedDate = filterDate?.value;
+      const selectedStatus = filterStatus?.value;
+
+      let filtered = allBookings;
+
+      // Filter by date
+      if (selectedDate) {
+        filtered = filtered.filter(b => b.date === selectedDate);
+      }
+
+      // Filter by status
+      if (selectedStatus) {
+        filtered = filtered.filter(b => b.status === selectedStatus);
+      }
+
+      this.displayBookings(filtered);
+    };
+
+    if (filterDate) {
+      filterDate.addEventListener('change', applyFilters);
+    }
+
+    if (filterStatus) {
+      filterStatus.addEventListener('change', applyFilters);
+    }
+  }
+
+  attachBookingActions(list) {
+    // Attach event listeners for booking actions
+    list.querySelectorAll('.confirm-booking').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.bookingId;
+        try {
+          await bookingService.updateBookingStatus(bookingId, 'confirmed');
+          showNotification('Резервацията е потвърдена', 'success');
+          this.loadBookings();
+        } catch (error) {
+          showNotification('Грешка при потвърждение на резервацията', 'error');
+        }
+      });
+    });
+
+    list.querySelectorAll('.cancel-booking').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.bookingId;
+        if (confirm('Сигурни ли сте, че искате да отмените тази резервация?')) {
           try {
-            await bookingService.updateBookingStatus(bookingId, 'confirmed');
-            showNotification('Резервацията е потвърдена', 'success');
+            await bookingService.cancelBooking(bookingId);
+            showNotification('Резервацията е отменена', 'success');
             this.loadBookings();
           } catch (error) {
-            showNotification('Грешка при потвърждение на резервацията', 'error');
+            showNotification(error.message, 'error');
           }
-        });
+        }
       });
+    });
 
-      list.querySelectorAll('.cancel-booking').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const bookingId = btn.dataset.bookingId;
-          if (confirm('Сигурни ли сте, че искате да отмените тази резервация?')) {
-            try {
-              await bookingService.cancelBooking(bookingId);
-              showNotification('Резервацията е отменена', 'success');
-              this.loadBookings();
-            } catch (error) {
-              showNotification(error.message, 'error');
-            }
-          }
-        });
+    list.querySelectorAll('.view-booking').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.bookingId;
+        const allBookings = await bookingService.getAllBookings();
+        const booking = allBookings.find(b => b.id === bookingId);
+        this.showBookingDetails(booking);
       });
-
-      list.querySelectorAll('.view-booking').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const bookingId = btn.dataset.bookingId;
-          const booking = allBookings.find(b => b.id === bookingId);
-          this.showBookingDetails(booking);
-        });
-      });
-    } catch (error) {
-      console.error('Load bookings error:', error);
-      showNotification('Грешка при зареждане на резервациите', 'error');
-    }
+    });
   }
 
   showBookingDetails(booking) {
@@ -481,14 +531,26 @@ class AdminComponent {
         .sort((a, b) => b.bookingCount - a.bookingCount);
 
       const html = users.map(user => `
-        <div class="user-item">
-          <div class="user-info">
-            <h3>${user.userName}</h3>
-            <p class="user-contact">${user.email} • ${user.phone}</p>
+        <div class="user-card">
+          <div class="user-card-header">
+            <div class="user-avatar">
+              <span class="avatar-initial">${user.userName.charAt(0).toUpperCase()}</span>
+            </div>
+            <div class="user-basic-info">
+              <h3>${user.userName}</h3>
+              <p class="user-email">${user.email}</p>
+            </div>
           </div>
-          <div class="user-stats">
-            <span class="stat">Резервации: <strong>${user.bookingCount}</strong></span>
-            <span class="stat">Похарчено: <strong>${formatPrice(user.totalSpent)}</strong></span>
+          <div class="user-card-body">
+            <div class="user-contact-info">
+              <span class="contact-item"><i class="material-icons">phone</i> ${user.phone}</span>
+            </div>
+            <div class="user-stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">Резервации</span>
+                <span class="stat-value">${user.bookingCount}</span>
+              </div>
+            </div>
           </div>
         </div>
       `).join('');
@@ -497,6 +559,105 @@ class AdminComponent {
     } catch (error) {
       console.error('Load users error:', error);
       showNotification('Грешка при зареждане на потребителите', 'error');
+    }
+  }
+
+  // ===== SETTINGS =====
+  async loadSettings() {
+    await this.loadSavedSettings();
+    this.attachSettingsListeners();
+  }
+
+  async loadSavedSettings() {
+    try {
+      const settings = await dataService.getSettings();
+      
+      // Load work hours
+      if (settings.workHours) {
+        const startInput = document.getElementById('work-start');
+        const endInput = document.getElementById('work-end');
+        if (startInput) startInput.value = settings.workHours.start;
+        if (endInput) endInput.value = settings.workHours.end;
+      }
+
+      // Load slot duration
+      if (settings.slotDuration) {
+        const durationInput = document.getElementById('slot-duration');
+        if (durationInput) durationInput.value = settings.slotDuration;
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  }
+
+  attachSettingsListeners() {
+    // Work hours settings
+    const saveHoursBtn = document.getElementById('save-hours');
+    if (saveHoursBtn) {
+      saveHoursBtn.addEventListener('click', () => this.saveWorkHours());
+    }
+
+    // Slot duration settings
+    const saveDurationBtn = document.getElementById('save-duration');
+    if (saveDurationBtn) {
+      saveDurationBtn.addEventListener('click', () => this.saveDuration());
+    }
+  }
+
+  async saveWorkHours() {
+    const startTime = document.getElementById('work-start').value;
+    const endTime = document.getElementById('work-end').value;
+
+    if (!startTime || !endTime) {
+      showNotification('Моля попълнете всички полета', 'error');
+      return;
+    }
+
+    if (startTime >= endTime) {
+      showNotification('Началното време трябва да е преди крайното време', 'error');
+      return;
+    }
+
+    try {
+      // Save to Firebase
+      await dataService.updateSettings({
+        workHours: {
+          start: startTime,
+          end: endTime
+        }
+      });
+
+      // Reload settings in booking service
+      await bookingService.loadSettings();
+
+      showNotification('Работното време е запазено успешно', 'success');
+    } catch (error) {
+      console.error('Error saving work hours:', error);
+      showNotification('Грешка при запазване на работното време', 'error');
+    }
+  }
+
+  async saveDuration() {
+    const duration = document.getElementById('slot-duration').value;
+
+    if (!duration || duration < 15) {
+      showNotification('Продължителността трябва да е минимум 15 минути', 'error');
+      return;
+    }
+
+    try {
+      // Save to Firebase
+      await dataService.updateSettings({
+        slotDuration: parseInt(duration)
+      });
+
+      // Reload settings in booking service
+      await bookingService.loadSettings();
+
+      showNotification('Продължителността на слотовете е запазена успешно', 'success');
+    } catch (error) {
+      console.error('Error saving slot duration:', error);
+      showNotification('Грешка при запазване на продължителността', 'error');
     }
   }
 

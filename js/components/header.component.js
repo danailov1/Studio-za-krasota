@@ -30,7 +30,7 @@ class HeaderComponent {
       <nav class="navbar">
         <div class="container">
           <div class="navbar-brand">
-            <h1>Козметично Студио</h1>
+            <h1><i class="material-icons">spa</i> Козметично Студио</h1>
           </div>
           <div class="navbar-menu">
             <a href="#services" class="nav-link nav-scroll">Услуги</a>
@@ -124,7 +124,6 @@ class HeaderComponent {
 
     // Attach scroll behavior to nav links
     const navScrollLinks = document.querySelectorAll('.nav-scroll');
-    console.log('Nav scroll links found:', navScrollLinks.length);
     
     // Remove old handlers
     Object.entries(this.navScrollHandlers).forEach(([key, handler]) => {
@@ -135,17 +134,14 @@ class HeaderComponent {
     });
     this.navScrollHandlers = {}; // Reset handlers map
     
-    navScrollLinks.forEach((link, idx) => {
+    navScrollLinks.forEach((link) => {
       const href = link.getAttribute('href');
-      console.log(`Attaching listener to nav link ${idx}:`, href);
       
       const clickHandler = (e) => {
-        console.log('Nav link clicked:', href);
         e.preventDefault();
         if (href && href.startsWith('#')) {
           const sectionId = href.slice(1);
           const target = document.getElementById(sectionId);
-          console.log('Target section:', sectionId, target);
           if (target) {
             target.classList.remove('hidden');
             target.scrollIntoView({ behavior: 'smooth' });

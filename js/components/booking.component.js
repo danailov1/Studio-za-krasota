@@ -152,6 +152,11 @@ class BookingComponent {
 
     if (!form || !dateInput || !cancelBtn) return;
 
+    // Restore from database
+    if (state.user) {
+      this.loadUserBookingPreferences(state.user.uid);
+    }
+
     // Remove old listeners by cloning
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
@@ -165,6 +170,16 @@ class BookingComponent {
       const date = e.target.value;
       this.selectedDate = date;
       this.selectedTime = null;
+
+      // Save to database
+      if (state.user) {
+        try {
+          const dataService = (await import('../services/data.service.js')).default;
+          await dataService.updateUserBookingPreference(state.user.uid, { lastBookingDate: date });
+        } catch (error) {
+          console.error('Error saving booking preference:', error);
+        }
+      }
 
       if (!bookingService.isDateAvailable(date)) {
         showNotification('Избраната дата не е валидна', 'error');
@@ -218,12 +233,23 @@ class BookingComponent {
 
       // Attach time slot handlers
       timeSlotsGrid.querySelectorAll('.time-slot').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           timeSlotsGrid.querySelectorAll('.time-slot').forEach(b => 
             b.classList.remove('selected')
           );
           btn.classList.add('selected');
           this.selectedTime = btn.dataset.time;
+          
+          // Save to database
+          if (state.user) {
+            try {
+              const dataService = (await import('../services/data.service.js')).default;
+              await dataService.updateUserBookingPreference(state.user.uid, { lastBookingTime: this.selectedTime });
+            } catch (error) {
+              console.error('Error saving booking preference:', error);
+            }
+          }
+          
           confirmBtn.disabled = false;
         });
       });
@@ -304,6 +330,28 @@ class BookingComponent {
       showNotification('Грешка при записване на резервацията', 'error');
       confirmBtn.disabled = false;
       confirmBtn.textContent = 'Потвърди резервация';
+    }
+  }
+
+  async loadUserBookingPreferences(userId) {
+    try {
+      const dataService = (await import('../services/data.service.js')).default;
+      const preferences = await dataService.getUserBookingPreferences(userId);
+      
+      if (preferences) {
+        if (preferences.lastBookingDate) {
+          this.selectedDate = preferences.lastBookingDate;
+          const dateInput = document.getElementById('booking-date');
+          if (dateInput) {
+            dateInput.value = preferences.lastBookingDate;
+          }
+        }
+        if (preferences.lastBookingTime) {
+          this.selectedTime = preferences.lastBookingTime;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading booking preferences:', error);
     }
   }
 

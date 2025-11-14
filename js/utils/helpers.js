@@ -187,25 +187,36 @@ export function showModal(content, onClose) {
   const overlay = createElement('div', { className: 'modal-overlay' });
   const box = createElement('div', { className: 'modal-content' });
 
-  const closeBtn = createElement(
-    'button',
-    {
-      className: 'modal-close',
-      onClick: () => hideModal(overlay, onClose)
-    },
-    ['×']
-  );
+  const closeBtn = createElement('button', { className: 'modal-close', type: 'button' });
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideModal(overlay, onClose);
+  });
 
   box.appendChild(closeBtn);
 
+  // Create content container
+  const contentContainer = createElement('div', { className: 'modal-body' });
+  
   if (typeof content === 'string') {
-    box.innerHTML += content;
+    contentContainer.innerHTML = content;
   } else {
-    box.appendChild(content);
+    contentContainer.appendChild(content);
   }
+  
+  box.appendChild(contentContainer);
 
   overlay.appendChild(box);
   document.getElementById('modal-root').appendChild(overlay);
+
+  // Close modal when clicking overlay
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      hideModal(overlay, onClose);
+    }
+  });
 
   setTimeout(() => overlay.classList.add('show'), 10);
 

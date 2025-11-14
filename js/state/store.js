@@ -45,6 +45,15 @@ class Store {
     this.setState({ isAdmin });
   }
 
+  clearUser() {
+    this.setState({
+      user: null,
+      isAdmin: false,
+      selectedService: null,
+      userBookings: []
+    });
+  }
+
   logout() {
     this.setState({
       user: null,

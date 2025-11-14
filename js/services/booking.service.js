@@ -8,6 +8,39 @@ class BookingService {
       end: '18:00'
     };
     this.slotDuration = 30; // minutes
+    
+    // Subscribe to settings changes
+    this.unsubscribeSettings = null;
+    this.subscribeToSettingsChanges();
+  }
+
+  subscribeToSettingsChanges() {
+    try {
+      this.unsubscribeSettings = dataService.subscribeToSettings((settings) => {
+        if (settings.workHours) {
+          this.workingHours = settings.workHours;
+        }
+        if (settings.slotDuration) {
+          this.slotDuration = settings.slotDuration;
+        }
+      });
+    } catch (error) {
+      console.error('Error subscribing to settings:', error);
+    }
+  }
+
+  async loadSettings() {
+    try {
+      const settings = await dataService.getSettings();
+      if (settings.workHours) {
+        this.workingHours = settings.workHours;
+      }
+      if (settings.slotDuration) {
+        this.slotDuration = settings.slotDuration;
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
   }
 
   // Generate available time slots for a date

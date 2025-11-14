@@ -8,23 +8,36 @@ class CalendarComponent {
     this.unsubscribe = null;
     this.isInitialized = false;
     this.renderScheduled = false;
+    this.lastUserId = null;
   }
 
   async init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
-    // Subscribe to render on any state change
+    // Subscribe to state changes
     this.unsubscribe = store.subscribe((state) => {
       if (state.user) {
-        // Render whenever state changes and user is logged in
+        // Load bookings ONLY when user changes
+        if (this.lastUserId !== state.user.uid) {
+          this.lastUserId = state.user.uid;
+          this.loadUserBookings(state.user.uid);
+        }
+        // Schedule render
         this.scheduleRender(state);
+      } else {
+        // Clear when user logs out
+        this.lastUserId = null;
+        this.render(state);
       }
     });
 
     const state = store.getState();
     if (state.user) {
+      this.lastUserId = state.user.uid;
       await this.loadUserBookings(state.user.uid);
+      this.render(state);
+    } else {
       this.render(state);
     }
   }

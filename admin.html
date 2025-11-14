@@ -7,10 +7,20 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
-<body>
-    <!-- Header Component -->
-    <header id="header-root"></header>
+<body class="admin-page">
+    <!-- Admin Header (no main header component) -->
+    <header class="admin-header-top">
+        <div class="admin-header-brand">
+            <h1><i class="material-icons">spa</i> Козметично Студио</h1>
+            <p>Администрация</p>
+        </div>
+        <div class="admin-header-user">
+            <span id="admin-user-name">Администратор</span>
+            <button id="admin-logout-btn" class="btn btn-sm btn-outline">Излез</button>
+        </div>
+    </header>
 
     <!-- Admin Container -->
     <div class="admin-container">
@@ -18,23 +28,23 @@
         <aside class="admin-sidebar">
             <nav class="admin-nav">
                 <button class="admin-nav-item active" data-section="dashboard">
-                    <span class="icon">📊</span>
+                    <i class="material-icons icon">dashboard</i>
                     <span>Контролен панел</span>
                 </button>
                 <button class="admin-nav-item" data-section="services">
-                    <span class="icon">💅</span>
+                    <i class="material-icons icon">medical_services</i>
                     <span>Услуги</span>
                 </button>
                 <button class="admin-nav-item" data-section="bookings">
-                    <span class="icon">📅</span>
+                    <i class="material-icons icon">event</i>
                     <span>Резервации</span>
                 </button>
                 <button class="admin-nav-item" data-section="users">
-                    <span class="icon">👥</span>
+                    <i class="material-icons icon">people</i>
                     <span>Потребители</span>
                 </button>
                 <button class="admin-nav-item" data-section="settings">
-                    <span class="icon">⚙️</span>
+                    <i class="material-icons icon">settings</i>
                     <span>Настройки</span>
                 </button>
             </nav>
@@ -49,34 +59,26 @@
                 </div>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon">📅</div>
+                        <i class="material-icons stat-icon">event</i>
                         <div class="stat-content">
                             <div class="stat-label">Резервации днес</div>
                             <div class="stat-value" id="stat-today-bookings">0</div>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">⏳</div>
+                        <i class="material-icons stat-icon">schedule</i>
                         <div class="stat-content">
                             <div class="stat-label">Чакащи потвърждение</div>
                             <div class="stat-value" id="stat-pending-bookings">0</div>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">✅</div>
+                        <i class="material-icons stat-icon">check_circle</i>
                         <div class="stat-content">
                             <div class="stat-label">Потвърдени резервации</div>
                             <div class="stat-value" id="stat-confirmed-bookings">0</div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Месечен приход</div>
-                            <div class="stat-value" id="stat-monthly-revenue">0 лв</div>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="dashboard-charts">
                     <div class="chart-container">
@@ -153,12 +155,6 @@
                             <input type="number" id="slot-duration" value="30" min="15" step="15">
                         </div>
                         <button class="btn btn-primary" id="save-duration">Запази</button>
-                    </div>
-
-                    <div class="setting-group">
-                        <h3>Данни</h3>
-                        <button class="btn btn-secondary" id="export-data">Експортиране на данни</button>
-                        <button class="btn btn-secondary" id="clear-past-bookings">Изтриване на минали резервации</button>
                     </div>
                 </div>
             </section>
