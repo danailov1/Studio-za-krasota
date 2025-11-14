@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Администрация - Козметично Студио</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <!-- Header Component -->
+    <header id="header-root"></header>
+
+    <!-- Admin Container -->
+    <div class="admin-container">
+        <!-- Sidebar Navigation -->
+        <aside class="admin-sidebar">
+            <nav class="admin-nav">
+                <button class="admin-nav-item active" data-section="dashboard">
+                    <span class="icon">📊</span>
+                    <span>Контролен панел</span>
+                </button>
+                <button class="admin-nav-item" data-section="services">
+                    <span class="icon">💅</span>
+                    <span>Услуги</span>
+                </button>
+                <button class="admin-nav-item" data-section="bookings">
+                    <span class="icon">📅</span>
+                    <span>Резервации</span>
+                </button>
+                <button class="admin-nav-item" data-section="users">
+                    <span class="icon">👥</span>
+                    <span>Потребители</span>
+                </button>
+                <button class="admin-nav-item" data-section="settings">
+                    <span class="icon">⚙️</span>
+                    <span>Настройки</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="admin-section active">
+                <div class="admin-header">
+                    <h1>Контролен панел</h1>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Резервации днес</div>
+                            <div class="stat-value" id="stat-today-bookings">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Чакащи потвърждение</div>
+                            <div class="stat-value" id="stat-pending-bookings">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Потвърдени резервации</div>
+                            <div class="stat-value" id="stat-confirmed-bookings">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Месечен приход</div>
+                            <div class="stat-value" id="stat-monthly-revenue">0 лв</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-charts">
+                    <div class="chart-container">
+                        <h3>Най-популярни услуги</h3>
+                        <div id="popular-services"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Резервации по дни</h3>
+                        <div id="bookings-by-day"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Services Section -->
+            <section id="services-section" class="admin-section">
+                <div class="admin-header">
+                    <h1>Управление на услуги</h1>
+                    <button class="btn btn-primary" id="add-service-btn">+ Нова услуга</button>
+                </div>
+                <div id="services-list"></div>
+            </section>
+
+            <!-- Bookings Section -->
+            <section id="bookings-section" class="admin-section">
+                <div class="admin-header">
+                    <h1>Управление на резервации</h1>
+                    <div class="filter-controls">
+                        <input type="date" id="filter-date" class="form-control">
+                        <select id="filter-status" class="form-control">
+                            <option value="">Всички статуси</option>
+                            <option value="pending">Чакащи</option>
+                            <option value="confirmed">Потвърдени</option>
+                            <option value="completed">Завършени</option>
+                            <option value="cancelled">Отменени</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="bookings-list"></div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users-section" class="admin-section">
+                <div class="admin-header">
+                    <h1>Управление на потребители</h1>
+                </div>
+                <div id="users-list"></div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="admin-section">
+                <div class="admin-header">
+                    <h1>Настройки</h1>
+                </div>
+                <div class="settings-form">
+                    <div class="setting-group">
+                        <h3>Работно време</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="work-start">Начало:</label>
+                                <input type="time" id="work-start" value="09:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="work-end">Край:</label>
+                                <input type="time" id="work-end" value="18:00">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="save-hours">Запази</button>
+                    </div>
+
+                    <div class="setting-group">
+                        <h3>Продължителност на слотовете</h3>
+                        <div class="form-group">
+                            <label for="slot-duration">Минути:</label>
+                            <input type="number" id="slot-duration" value="30" min="15" step="15">
+                        </div>
+                        <button class="btn btn-primary" id="save-duration">Запази</button>
+                    </div>
+
+                    <div class="setting-group">
+                        <h3>Данни</h3>
+                        <button class="btn btn-secondary" id="export-data">Експортиране на данни</button>
+                        <button class="btn btn-secondary" id="clear-past-bookings">Изтриване на минали резервации</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-root"></div>
+    <div id="notification-root"></div>
+
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

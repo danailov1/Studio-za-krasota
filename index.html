@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Козметично Студио - Резервации</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <!-- Header Component -->
+    <header id="header-root"></header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>Добре дошли в нашето козметично студио</h1>
+            <p>Професионални услуги за вашата красота</p>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="services-section">
+            <h2>Нашите Услуги</h2>
+            <div class="filters">
+                <button class="filter-btn active" data-category="all">Всички</button>
+                <button class="filter-btn" data-category="face">Лице</button>
+                <button class="filter-btn" data-category="body">Тяло</button>
+                <button class="filter-btn" data-category="nails">Нокти</button>
+                <button class="filter-btn" data-category="hair">Коса</button>
+            </div>
+            <div id="services-root" class="services-grid"></div>
+        </section>
+
+        <!-- Booking Section -->
+        <section id="booking-section" class="booking-section hidden">
+            <h2>Направете резервация</h2>
+            <div id="booking-root"></div>
+        </section>
+
+        <!-- User Bookings Section -->
+        <section id="bookings" class="user-bookings-section hidden">
+            <h2>Моите резервации</h2>
+            <div id="user-bookings-root"></div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Козметично Студио. Всички права запазени.</p>
+            <p>Контакти: +359 888 123 456 | info@studio.bg</p>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="modal-root"></div>
+    <div id="notification-root"></div>
+
+    <!-- Initialize App -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
