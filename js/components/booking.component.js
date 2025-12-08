@@ -186,7 +186,7 @@ class BookingComponent {
         return;
       }
 
-      await this.loadTimeSlots(date, state.selectedService.duration);
+      await this.loadTimeSlots(date, state.selectedService.duration, state);
     });
 
     // Cancel booking
@@ -204,7 +204,7 @@ class BookingComponent {
     });
   }
 
-  async loadTimeSlots(date, duration) {
+  async loadTimeSlots(date, duration, state) {
     const timeSlotsContainer = document.getElementById('time-slots');
     const timeSlotsGrid = document.getElementById('time-slots-grid');
     const confirmBtn = document.getElementById('confirm-booking');

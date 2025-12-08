@@ -743,6 +743,13 @@ section h2::after {
   .navbar .container {
     padding: 0.6rem 15px;
     gap: 0.25rem;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .navbar-brand {
+    width: 100%;
+    margin-bottom: 0.5rem;
   }
 
   .navbar-brand h1 {
@@ -752,10 +759,30 @@ section h2::after {
 
   .navbar-menu {
     gap: 0.25rem;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .nav-link {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.4rem;
+    flex: 1;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .user-menu button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.75rem;
+    flex: 1;
+  }
+
+  .user-menu button span {
     display: none;
+  }
+
+  .user-menu button .arrow {
+    display: inline;
   }
 
   .btn {
