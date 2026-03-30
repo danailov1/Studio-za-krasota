@@ -3,11 +3,13 @@ import store from './state/store.js';
 import authService from './services/auth.service.js';
 import { seedDatabase } from './utils/seed.js';
 import { showNotification } from './utils/helpers.js';
+import { getCurrentTheme, initTheme, toggleTheme } from './utils/theme.js';
 
 class AdminApp {
   constructor() {
     this.components = {};
     this.authStateReady = false;
+    this.themeChangeHandler = null;
   }
 
   async waitForAuthState() {
@@ -28,6 +30,8 @@ class AdminApp {
 
   async init() {
     try {
+      initTheme();
+
       // Wait for auth state to be determined
       console.log('Waiting for auth state...');
       const state = await Promise.race([
@@ -78,9 +82,37 @@ class AdminApp {
   setupAdminHeader(user) {
     const userNameEl = document.getElementById('admin-user-name');
     const logoutBtn = document.getElementById('admin-logout-btn');
+    const themeToggleBtn = document.getElementById('admin-theme-toggle');
 
     if (userNameEl && user.displayName) {
       userNameEl.textContent = user.displayName;
+    }
+
+    const syncThemeButton = () => {
+      if (!themeToggleBtn) {
+        return;
+      }
+
+      const isDarkTheme = getCurrentTheme() === 'dark';
+      themeToggleBtn.innerHTML = `
+        <i class="material-icons">${isDarkTheme ? 'light_mode' : 'dark_mode'}</i>
+        <span>${isDarkTheme ? 'Светла тема' : 'Тъмна тема'}</span>
+      `;
+    };
+
+    syncThemeButton();
+
+    if (this.themeChangeHandler) {
+      window.removeEventListener('themechange', this.themeChangeHandler);
+    }
+
+    this.themeChangeHandler = syncThemeButton;
+    window.addEventListener('themechange', this.themeChangeHandler);
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        toggleTheme();
+      });
     }
 
     if (logoutBtn) {
@@ -123,6 +155,10 @@ class AdminApp {
   }
 
   destroy() {
+    if (this.themeChangeHandler) {
+      window.removeEventListener('themechange', this.themeChangeHandler);
+    }
+
     Object.values(this.components).forEach(component => {
       if (component.destroy) {
         component.destroy();

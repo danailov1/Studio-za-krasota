@@ -9,25 +9,25 @@
 
 .filter-btn {
   padding: 0.65rem 1.8rem;
-  background-color: var(--white);
-  border: none;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 24px;
   cursor: pointer;
   transition: all 0.25s ease;
   font-weight: 500;
   font-size: 0.95rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .filter-btn.active {
   background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
   color: var(--white);
-  box-shadow: 0 6px 16px rgba(200, 154, 123, 0.25);
+  box-shadow: 0 10px 24px rgba(200, 154, 123, 0.25);
 }
 
 /* ===== Services Grid ===== */
@@ -41,7 +41,7 @@
 .empty-services {
   text-align: center;
   padding: 4rem 2rem;
-  background: linear-gradient(135deg, rgba(200, 154, 123, 0.06), rgba(231, 196, 168, 0.04));
+  background: var(--accent-panel);
   border-radius: var(--radius-lg);
   border: 2px dashed var(--primary-color);
   grid-column: 1 / -1;
@@ -78,20 +78,21 @@
 }
 
 .service-card {
-  background-color: var(--white);
+  background-color: var(--surface-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   height: 100%;
+  border: 1px solid var(--border-color);
 }
 
 .service-card:hover {
   transform: translateY(-12px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
 .service-card:active {
@@ -117,7 +118,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(0,0,0,0.1));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.12));
 }
 
 .service-image img {
@@ -147,7 +148,7 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  background: linear-gradient(180deg, var(--white), rgba(248, 244, 241, 0.5));
+  background: var(--card-gradient);
 }
 
 .service-content h3 {
@@ -204,15 +205,15 @@
 .booking-container {
   max-width: 900px;
   margin: 0 auto;
-  background-color: var(--white);
+  background-color: var(--surface-color);
   border-radius: var(--radius-lg);
   padding: 2.5rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
 }
 
 .booking-summary {
-  background: linear-gradient(135deg, rgba(200, 154, 123, 0.06), rgba(231, 196, 168, 0.04));
+  background: var(--accent-panel);
   padding: 1.75rem;
   border-radius: var(--radius-lg);
   margin-bottom: 2.5rem;
@@ -298,7 +299,7 @@
   font-size: 1rem;
   transition: all 0.25s ease;
   font-family: inherit;
-  background-color: var(--white);
+  background-color: var(--input-bg);
 }
 
 .form-group input:focus,
@@ -306,14 +307,14 @@
 .form-group select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(200, 154, 123, 0.08);
-  background-color: var(--white);
+  box-shadow: 0 0 0 3px rgba(200, 154, 123, 0.14);
+  background-color: var(--input-bg);
 }
 
 .form-group input.input-error,
 .form-group textarea.input-error {
   border-color: var(--danger);
-  background-color: rgba(220, 53, 69, 0.02);
+  background-color: rgba(220, 53, 69, 0.08);
 }
 
 .error-message {
@@ -343,7 +344,7 @@
 
 .time-slot {
   padding: 0.85rem;
-  background-color: var(--white);
+  background-color: var(--surface-color);
   border: 1.5px solid var(--border-color);
   border-radius: 20px;
   cursor: pointer;
@@ -355,7 +356,7 @@
 
 .time-slot:hover {
   border-color: var(--primary-color);
-  background-color: rgba(200, 154, 123, 0.04);
+  background: var(--accent-panel);
   transform: translateY(-2px);
 }
 
@@ -363,7 +364,7 @@
   background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
   border-color: var(--primary-color);
   color: var(--white);
-  box-shadow: 0 4px 12px rgba(200, 154, 123, 0.25);
+  box-shadow: 0 10px 24px rgba(200, 154, 123, 0.25);
 }
 
 .no-slots {
@@ -398,16 +399,17 @@
 }
 
 .booking-card {
-  background-color: var(--white);
+  background-color: var(--surface-color);
   border-radius: var(--radius-lg);
   padding: 1.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
   border-left: 5px solid var(--primary-color);
   transition: all 0.3s ease;
+  border: 1px solid var(--border-color);
 }
 
 .booking-card:hover {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
@@ -458,23 +460,23 @@
 }
 
 .status-pending {
-  background-color: rgba(255, 193, 7, 0.15);
-  color: #856404;
+  background-color: var(--pending-bg);
+  color: var(--pending-text);
 }
 
 .status-confirmed {
-  background-color: rgba(40, 167, 69, 0.15);
-  color: #155724;
+  background-color: var(--confirmed-bg);
+  color: var(--confirmed-text);
 }
 
 .status-completed {
-  background-color: rgba(23, 162, 184, 0.15);
-  color: #0c5460;
+  background-color: var(--completed-bg);
+  color: var(--completed-text);
 }
 
 .status-cancelled {
-  background-color: rgba(220, 53, 69, 0.15);
-  color: #721c24;
+  background-color: var(--cancelled-bg);
+  color: var(--cancelled-text);
 }
 
 .booking-body h4 {
@@ -524,7 +526,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -538,7 +540,8 @@
 }
 
 .modal-content {
-  background-color: var(--white);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 2rem;
   max-width: 500px;
@@ -610,7 +613,7 @@
   bottom: 2rem;
   right: 2rem;
   padding: 1rem 1.5rem;
-  background-color: var(--white);
+  background-color: var(--surface-color);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   max-width: 400px;
@@ -645,12 +648,29 @@
     grid-template-columns: 1fr;
   }
 
+  .filters {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -0.25rem;
+    padding: 0 0.25rem 0.35rem;
+    scrollbar-width: none;
+  }
+
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
   .booking-container {
     padding: 1.5rem;
   }
 
   .booking-actions {
     flex-direction: column;
+  }
+
+  .booking-actions .btn {
+    width: 100%;
   }
 
   .booking-header {
@@ -667,11 +687,8 @@
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   }
 
-  .filters {
-    gap: 0.5rem;
-  }
-
   .filter-btn {
+    flex: 0 0 auto;
     padding: 0.6rem 1.4rem;
     font-size: 0.85rem;
   }
@@ -696,6 +713,7 @@
 
 @media (max-width: 480px) {
   .services-grid {
+    grid-template-columns: 1fr;
     gap: 1.75rem;
   }
 

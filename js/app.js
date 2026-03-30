@@ -6,6 +6,7 @@ import store from './state/store.js';
 import authService from './services/auth.service.js';
 import { seedDatabase } from './utils/seed.js';
 import { showNotification } from './utils/helpers.js';
+import { initTheme } from './utils/theme.js';
 
 class App {
   constructor() {
@@ -19,6 +20,7 @@ class App {
 
     try {
       console.log('🚀 Initializing app...');
+      initTheme();
       
       // Initialize components first - header is critical
       this.components.header = new HeaderComponent('header-root');

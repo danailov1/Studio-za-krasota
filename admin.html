@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Администрация - Козметично Студио</title>
+    <script>
+        (() => {
+            try {
+                const savedTheme = localStorage.getItem('beauty-studio-theme');
+                const theme = savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.style.colorScheme = theme;
+            } catch (error) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/admin.css">
@@ -17,6 +29,7 @@
             <p>Администрация</p>
         </div>
         <div class="admin-header-user">
+            <button id="admin-theme-toggle" class="theme-toggle admin-theme-toggle" type="button" aria-label="Смени темата"></button>
             <span id="admin-user-name">Администратор</span>
             <button id="admin-logout-btn" class="btn btn-sm btn-outline">Излез</button>
         </div>
@@ -79,6 +92,7 @@
                             <div class="stat-value" id="stat-confirmed-bookings">0</div>
                         </div>
                     </div>
+                </div>
 
                 <div class="dashboard-charts">
                     <div class="chart-container">

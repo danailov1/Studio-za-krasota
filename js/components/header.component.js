@@ -2,14 +2,18 @@ import store from '../state/store.js';
 import authService from '../services/auth.service.js';
 import { createElement, showModal, showNotification } from '../utils/helpers.js';
 import { validateForm, displayFormErrors, clearFormErrors } from '../utils/validators.js';
+import { getCurrentTheme, toggleTheme } from '../utils/theme.js';
 
 class HeaderComponent {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
     this.unsubscribe = null;
     this.documentClickHandler = null;
+    this.resizeHandler = null;
+    this.themeChangeHandler = null;
     this.isInitialized = false;
-    this.navScrollHandlers = {}; // Store handlers for cleanup
+    this.isMobileMenuOpen = false;
+    this.navScrollHandlers = [];
   }
 
   init() {
@@ -17,22 +21,97 @@ class HeaderComponent {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
+    this.resizeHandler = () => {
+      if (window.innerWidth > 768) {
+        this.closeMobileMenu();
+      }
+    };
+
+    this.themeChangeHandler = () => {
+      this.render(store.getState());
+    };
+
+    window.addEventListener('resize', this.resizeHandler);
+    window.addEventListener('themechange', this.themeChangeHandler);
+
     this.unsubscribe = store.subscribe((state) => {
       this.render(state);
     });
     this.render(store.getState());
   }
 
+  getThemeToggleConfig() {
+    const currentTheme = getCurrentTheme();
+
+    return currentTheme === 'dark'
+      ? { icon: 'light_mode', label: 'Светла тема' }
+      : { icon: 'dark_mode', label: 'Тъмна тема' };
+  }
+
+  syncMobileMenuState() {
+    const navbar = this.container.querySelector('.navbar');
+    const navbarMenu = this.container.querySelector('#navbar-menu');
+    const navToggleBtn = this.container.querySelector('#nav-toggle-btn');
+
+    navbar?.classList.toggle('nav-open', this.isMobileMenuOpen);
+    navbarMenu?.classList.toggle('is-open', this.isMobileMenuOpen);
+
+    if (navToggleBtn) {
+      navToggleBtn.setAttribute('aria-expanded', String(this.isMobileMenuOpen));
+      navToggleBtn.setAttribute(
+        'aria-label',
+        this.isMobileMenuOpen ? 'Затвори навигацията' : 'Отвори навигацията'
+      );
+      navToggleBtn.innerHTML = `
+        <i class="material-icons">${this.isMobileMenuOpen ? 'close' : 'menu'}</i>
+        <span class="sr-only">${this.isMobileMenuOpen ? 'Затвори навигацията' : 'Отвори навигацията'}</span>
+      `;
+    }
+
+    document.body.classList.toggle('menu-open', this.isMobileMenuOpen);
+  }
+
+  closeMobileMenu() {
+    if (!this.isMobileMenuOpen) {
+      return;
+    }
+
+    this.isMobileMenuOpen = false;
+    this.syncMobileMenuState();
+  }
+
   render(state) {
     const { user, isAdmin } = state;
+    const { icon, label } = this.getThemeToggleConfig();
 
     this.container.innerHTML = `
-      <nav class="navbar">
+      <nav class="navbar ${this.isMobileMenuOpen ? 'nav-open' : ''}">
         <div class="container">
-          <div class="navbar-brand">
-            <h1><i class="material-icons">spa</i> Козметично Студио</h1>
+          <div class="navbar-brand-row">
+            <div class="navbar-brand">
+              <a href="index.html" class="brand-link" aria-label="Към началната страница">
+                <h1><i class="material-icons">spa</i> Козметично Студио</h1>
+              </a>
+            </div>
+            <div class="navbar-controls">
+              <button class="theme-toggle" id="theme-toggle-btn" type="button" aria-label="Смени темата">
+                <i class="material-icons">${icon}</i>
+                <span class="theme-toggle-label">${label}</span>
+              </button>
+              <button
+                class="nav-toggle"
+                id="nav-toggle-btn"
+                type="button"
+                aria-controls="navbar-menu"
+                aria-expanded="${this.isMobileMenuOpen}"
+                aria-label="${this.isMobileMenuOpen ? 'Затвори навигацията' : 'Отвори навигацията'}"
+              >
+                <i class="material-icons">${this.isMobileMenuOpen ? 'close' : 'menu'}</i>
+                <span class="sr-only">${this.isMobileMenuOpen ? 'Затвори навигацията' : 'Отвори навигацията'}</span>
+              </button>
+            </div>
           </div>
-          <div class="navbar-menu">
+          <div class="navbar-menu ${this.isMobileMenuOpen ? 'is-open' : ''}" id="navbar-menu">
             <a href="#services" class="nav-link nav-scroll">Услуги</a>
             ${user ? `
               <a href="#bookings" class="nav-link nav-scroll">Моите резервации</a>
@@ -56,10 +135,46 @@ class HeaderComponent {
     `;
 
     this.attachEventListeners(state);
+    this.syncMobileMenuState();
   }
 
   attachEventListeners(state) {
     const { user } = state;
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const navToggleBtn = document.getElementById('nav-toggle-btn');
+    const navbar = this.container.querySelector('.navbar');
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        toggleTheme();
+      });
+    }
+
+    if (navToggleBtn) {
+      navToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.isMobileMenuOpen = !this.isMobileMenuOpen;
+        this.syncMobileMenuState();
+      });
+    }
+
+    // Remove old document click handler if exists
+    if (this.documentClickHandler) {
+      document.removeEventListener('click', this.documentClickHandler);
+    }
+
+    this.documentClickHandler = (event) => {
+      if (!navbar?.contains(event.target)) {
+        this.closeMobileMenu();
+      }
+
+      const userDropdown = document.getElementById('user-dropdown');
+      if (userDropdown && !event.target.closest('.user-menu')) {
+        userDropdown.classList.remove('show');
+      }
+    };
+
+    document.addEventListener('click', this.documentClickHandler);
 
     if (user) {
       const userMenuBtn = document.getElementById('user-menu-btn');
@@ -71,32 +186,19 @@ class HeaderComponent {
           e.stopPropagation();
           userDropdown.classList.toggle('show');
         });
-
-        // Remove old document click handler if exists
-        if (this.documentClickHandler) {
-          document.removeEventListener('click', this.documentClickHandler);
-        }
-
-        // Create and store new handler
-        this.documentClickHandler = () => {
-          userDropdown.classList.remove('show');
-        };
-
-        document.addEventListener('click', this.documentClickHandler);
       }
 
       if (logoutBtn) {
         logoutBtn.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
+          this.closeMobileMenu();
           console.log('Logout button clicked');
           try {
             const result = await authService.logout();
             console.log('Logout result:', result);
             if (result.success) {
               showNotification('Излязохте успешно', 'success');
-              sessionStorage.clear();
-              localStorage.clear();
               setTimeout(() => {
                 window.location.href = 'index.html';
               }, 500);
@@ -114,43 +216,46 @@ class HeaderComponent {
       const registerBtn = document.getElementById('register-btn');
 
       if (loginBtn) {
-        loginBtn.addEventListener('click', () => this.showLoginModal());
+        loginBtn.addEventListener('click', () => {
+          this.closeMobileMenu();
+          this.showLoginModal();
+        });
       }
 
       if (registerBtn) {
-        registerBtn.addEventListener('click', () => this.showRegisterModal());
+        registerBtn.addEventListener('click', () => {
+          this.closeMobileMenu();
+          this.showRegisterModal();
+        });
       }
     }
 
     // Attach scroll behavior to nav links
     const navScrollLinks = document.querySelectorAll('.nav-scroll');
-    
-    // Remove old handlers
-    Object.entries(this.navScrollHandlers).forEach(([key, handler]) => {
-      const oldLink = document.querySelector(`a[href="${key}"]`);
-      if (oldLink) {
-        oldLink.removeEventListener('click', handler);
-      }
+
+    this.navScrollHandlers.forEach(({ element, handler }) => {
+      element.removeEventListener('click', handler);
     });
-    this.navScrollHandlers = {}; // Reset handlers map
-    
+    this.navScrollHandlers = [];
+
     navScrollLinks.forEach((link) => {
       const href = link.getAttribute('href');
-      
+
       const clickHandler = (e) => {
         e.preventDefault();
         if (href && href.startsWith('#')) {
           const sectionId = href.slice(1);
           const target = document.getElementById(sectionId);
           if (target) {
+            this.closeMobileMenu();
             target.classList.remove('hidden');
             target.scrollIntoView({ behavior: 'smooth' });
           }
         }
       };
-      
+
       link.addEventListener('click', clickHandler);
-      this.navScrollHandlers[href] = clickHandler; // Store for cleanup
+      this.navScrollHandlers.push({ element: link, handler: clickHandler });
     });
   }
 
@@ -355,12 +460,16 @@ class HeaderComponent {
     if (this.documentClickHandler) {
       document.removeEventListener('click', this.documentClickHandler);
     }
-    // Clean up nav scroll handlers
-    Object.entries(this.navScrollHandlers).forEach(([href, handler]) => {
-      const link = document.querySelector(`a[href="${href}"]`);
-      if (link) {
-        link.removeEventListener('click', handler);
-      }
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+    }
+    if (this.themeChangeHandler) {
+      window.removeEventListener('themechange', this.themeChangeHandler);
+    }
+    document.body.classList.remove('menu-open');
+
+    this.navScrollHandlers.forEach(({ element, handler }) => {
+      element.removeEventListener('click', handler);
     });
   }
 }
