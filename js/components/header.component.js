@@ -1,6 +1,6 @@
 import store from '../state/store.js';
 import authService from '../services/auth.service.js';
-import { createElement, showModal, showNotification } from '../utils/helpers.js';
+import { createElement, escapeHtml, showModal, showNotification } from '../utils/helpers.js';
 import { validateForm, displayFormErrors, clearFormErrors } from '../utils/validators.js';
 import { getCurrentTheme, toggleTheme } from '../utils/theme.js';
 
@@ -118,7 +118,7 @@ class HeaderComponent {
               ${isAdmin ? '<a href="admin.html" class="nav-link">Администрация</a>' : ''}
               <div class="user-menu">
                 <button class="btn-text" id="user-menu-btn">
-                  <span>${user.displayName}</span>
+                  <span>${escapeHtml(user.displayName)}</span>
                   <span class="arrow">▼</span>
                 </button>
                 <div class="user-dropdown" id="user-dropdown">
@@ -245,6 +245,14 @@ class HeaderComponent {
         e.preventDefault();
         if (href && href.startsWith('#')) {
           const sectionId = href.slice(1);
+
+          if (sectionId === 'bookings' && !store.getState().user) {
+            this.closeMobileMenu();
+            showNotification('Влезте в профила си, за да видите резервациите си', 'warning');
+            this.showLoginModal();
+            return;
+          }
+
           const target = document.getElementById(sectionId);
           if (target) {
             this.closeMobileMenu();
@@ -303,13 +311,18 @@ class HeaderComponent {
         return;
       }
 
-      const result = await authService.login(formData.email, formData.password);
-      
-      if (result.success) {
-        showNotification('Успешен вход', 'success');
-        modal.remove();
-      } else {
-        showNotification(result.error, 'error');
+      try {
+        const result = await authService.login(formData.email, formData.password);
+        
+        if (result.success) {
+          showNotification('Успешен вход', 'success');
+          modal.remove();
+        } else {
+          showNotification(result.error || 'Грешка при вход', 'error');
+        }
+      } catch (error) {
+        console.error('Login modal submit error:', error);
+        showNotification('Грешка при вход', 'error');
       }
     });
 
@@ -380,18 +393,23 @@ class HeaderComponent {
         return;
       }
 
-      const result = await authService.register(
-        formData.email,
-        formData.password,
-        formData.displayName,
-        formData.phone
-      );
-      
-      if (result.success) {
-        showNotification('Успешна регистрация', 'success');
-        modal.remove();
-      } else {
-        showNotification(result.error, 'error');
+      try {
+        const result = await authService.register(
+          formData.email,
+          formData.password,
+          formData.displayName,
+          formData.phone
+        );
+        
+        if (result.success) {
+          showNotification('Успешна регистрация', 'success');
+          modal.remove();
+        } else {
+          showNotification(result.error || 'Грешка при регистрация', 'error');
+        }
+      } catch (error) {
+        console.error('Register modal submit error:', error);
+        showNotification('Грешка при регистрация', 'error');
       }
     });
 
@@ -437,13 +455,18 @@ class HeaderComponent {
         return;
       }
 
-      const result = await authService.resetPassword(email);
-      
-      if (result.success) {
-        showNotification('Линкът за възстановяване е изпратен на вашия имейл', 'success');
-        modal.remove();
-      } else {
-        showNotification(result.error, 'error');
+      try {
+        const result = await authService.resetPassword(email);
+        
+        if (result.success) {
+          showNotification('Линкът за възстановяване е изпратен на вашия имейл', 'success');
+          modal.remove();
+        } else {
+          showNotification(result.error || 'Грешка при възстановяване на паролата', 'error');
+        }
+      } catch (error) {
+        console.error('Reset password modal submit error:', error);
+        showNotification('Грешка при възстановяване на паролата', 'error');
       }
     });
 

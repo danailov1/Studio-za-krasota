@@ -1,6 +1,6 @@
 import store from '../state/store.js';
 import bookingService from '../services/booking.service.js';
-import { formatDate, formatPrice, showNotification } from '../utils/helpers.js';
+import { escapeHtml, formatPrice, showNotification, toDateInputValue } from '../utils/helpers.js';
 import { validateBooking, displayFormErrors, clearFormErrors } from '../utils/validators.js';
 
 class BookingComponent {
@@ -52,8 +52,8 @@ class BookingComponent {
         <div class="booking-summary">
           <h3>Избрана услуга</h3>
           <div class="selected-service">
-            <h4>${selectedService.name}</h4>
-            <p>${selectedService.description}</p>
+            <h4>${escapeHtml(selectedService.name)}</h4>
+            <p>${escapeHtml(selectedService.description)}</p>
             <div class="service-details">
               <span>Продължителност: ${selectedService.duration} мин</span>
               <span>Цена: ${formatPrice(selectedService.price)}</span>
@@ -92,7 +92,7 @@ class BookingComponent {
                 type="text" 
                 id="booking-name" 
                 name="userName" 
-                value="${user?.displayName || ''}"
+                value="${escapeHtml(user?.displayName || '')}"
                 required
               >
             </div>
@@ -103,7 +103,7 @@ class BookingComponent {
                 type="email" 
                 id="booking-email" 
                 name="userEmail" 
-                value="${user?.email || ''}"
+                value="${escapeHtml(user?.email || '')}"
                 required
               >
             </div>
@@ -114,7 +114,7 @@ class BookingComponent {
                 type="tel" 
                 id="booking-phone" 
                 name="userPhone" 
-                value="${user?.phone || ''}"
+                value="${escapeHtml(user?.phone || '')}"
                 placeholder="0888 123 456"
                 required
               >
@@ -144,34 +144,26 @@ class BookingComponent {
     this.attachEventListeners(state);
   }
 
-  attachEventListeners(state) {
+  async attachEventListeners(state) {
     const form = document.getElementById('booking-form');
     const dateInput = document.getElementById('booking-date');
     const cancelBtn = document.getElementById('cancel-booking');
-    const confirmBtn = document.getElementById('confirm-booking');
 
     if (!form || !dateInput || !cancelBtn) return;
 
-    // Restore from database
-    if (state.user) {
-      this.loadUserBookingPreferences(state.user.uid);
-    }
-
-    // Remove old listeners by cloning
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
 
     const newDateInput = document.getElementById('booking-date');
     const newCancelBtn = document.getElementById('cancel-booking');
-    const newConfirmBtn = document.getElementById('confirm-booking');
 
     // Date change handler
     newDateInput.addEventListener('change', async (e) => {
       const date = e.target.value;
       this.selectedDate = date;
       this.selectedTime = null;
+      this.clearTimeSlots();
 
-      // Save to database
       if (state.user) {
         try {
           const dataService = (await import('../services/data.service.js')).default;
@@ -182,6 +174,8 @@ class BookingComponent {
       }
 
       if (!bookingService.isDateAvailable(date)) {
+        this.selectedDate = null;
+        e.target.value = '';
         showNotification('Избраната дата не е валидна', 'error');
         return;
       }
@@ -192,9 +186,10 @@ class BookingComponent {
     // Cancel booking
     newCancelBtn.addEventListener('click', () => {
       store.selectService(null);
-      document.getElementById('booking-section').classList.add('hidden');
+      document.getElementById('booking-section')?.classList.add('hidden');
       this.selectedDate = null;
       this.selectedTime = null;
+      this.clearTimeSlots();
     });
 
     // Form submit
@@ -202,15 +197,41 @@ class BookingComponent {
       e.preventDefault();
       await this.handleBookingSubmit(newForm, state);
     });
+
+    if (state.user) {
+      await this.loadUserBookingPreferences(state.user.uid, state);
+    }
   }
 
-  async loadTimeSlots(date, duration, state) {
+  clearTimeSlots() {
     const timeSlotsContainer = document.getElementById('time-slots');
     const timeSlotsGrid = document.getElementById('time-slots-grid');
     const confirmBtn = document.getElementById('confirm-booking');
 
+    timeSlotsContainer?.classList.add('hidden');
+    if (timeSlotsGrid) {
+      timeSlotsGrid.innerHTML = '';
+    }
+
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Потвърди резервация';
+    }
+  }
+
+  async loadTimeSlots(date, duration, state, preferredTime = null) {
+    const timeSlotsContainer = document.getElementById('time-slots');
+    const timeSlotsGrid = document.getElementById('time-slots-grid');
+    const confirmBtn = document.getElementById('confirm-booking');
+
+    if (!timeSlotsContainer || !timeSlotsGrid || !confirmBtn) {
+      return;
+    }
+
     timeSlotsContainer.classList.remove('hidden');
     timeSlotsGrid.innerHTML = '<div class="loading">Зареждане на свободни часове...</div>';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Потвърди резервация';
 
     try {
       const slots = await bookingService.getAvailableSlots(date, duration);
@@ -231,28 +252,39 @@ class BookingComponent {
         </button>
       `).join('');
 
-      // Attach time slot handlers
+      const selectTimeSlot = async (selectedButton, persistPreference = true) => {
+        timeSlotsGrid.querySelectorAll('.time-slot').forEach(button => {
+          button.classList.remove('selected');
+        });
+        selectedButton.classList.add('selected');
+        this.selectedTime = selectedButton.dataset.time;
+        
+        if (persistPreference && state.user) {
+          try {
+            const dataService = (await import('../services/data.service.js')).default;
+            await dataService.updateUserBookingPreference(state.user.uid, { lastBookingTime: this.selectedTime });
+          } catch (error) {
+            console.error('Error saving booking preference:', error);
+          }
+        }
+        
+        confirmBtn.disabled = false;
+      };
+
       timeSlotsGrid.querySelectorAll('.time-slot').forEach(btn => {
         btn.addEventListener('click', async () => {
-          timeSlotsGrid.querySelectorAll('.time-slot').forEach(b => 
-            b.classList.remove('selected')
-          );
-          btn.classList.add('selected');
-          this.selectedTime = btn.dataset.time;
-          
-          // Save to database
-          if (state.user) {
-            try {
-              const dataService = (await import('../services/data.service.js')).default;
-              await dataService.updateUserBookingPreference(state.user.uid, { lastBookingTime: this.selectedTime });
-            } catch (error) {
-              console.error('Error saving booking preference:', error);
-            }
-          }
-          
-          confirmBtn.disabled = false;
+          await selectTimeSlot(btn);
         });
       });
+
+      if (preferredTime) {
+        const preferredButton = Array.from(timeSlotsGrid.querySelectorAll('.time-slot'))
+          .find(button => button.dataset.time === preferredTime);
+
+        if (preferredButton) {
+          await selectTimeSlot(preferredButton, false);
+        }
+      }
 
     } catch (error) {
       console.error('Load time slots error:', error);
@@ -263,6 +295,11 @@ class BookingComponent {
 
   async handleBookingSubmit(form, state) {
     clearFormErrors(form);
+
+    if (!state.user) {
+      showNotification('Моля влезте в профила си, за да направите резервация', 'warning');
+      return;
+    }
 
     if (!this.selectedDate || !this.selectedTime) {
       showNotification('Моля изберете дата и час', 'warning');
@@ -300,24 +337,14 @@ class BookingComponent {
         showNotification('Резервацията е направена успешно!', 'success');
         store.addBooking(result.booking);
         store.selectService(null);
-        
-        // Reload user bookings to ensure they're in sync
-        const state = store.getState();
-        if (state.user) {
-          const bookingService_import = await import('../services/booking.service.js').then(m => m.default);
-          const bookings = await bookingService_import.getUserBookings(state.user.uid);
-          store.setUserBookings(bookings);
-        }
-        
-        // Hide booking section and show user bookings
-        document.getElementById('booking-section').classList.add('hidden');
+
+        document.getElementById('booking-section')?.classList.add('hidden');
         const bookingsSection = document.getElementById('bookings');
         if (bookingsSection) {
           bookingsSection.classList.remove('hidden');
           bookingsSection.scrollIntoView({ behavior: 'smooth' });
         }
-        
-        // Reset form
+
         this.selectedDate = null;
         this.selectedTime = null;
       } else {
@@ -333,22 +360,28 @@ class BookingComponent {
     }
   }
 
-  async loadUserBookingPreferences(userId) {
+  async loadUserBookingPreferences(userId, state) {
     try {
       const dataService = (await import('../services/data.service.js')).default;
       const preferences = await dataService.getUserBookingPreferences(userId);
       
-      if (preferences) {
-        if (preferences.lastBookingDate) {
-          this.selectedDate = preferences.lastBookingDate;
-          const dateInput = document.getElementById('booking-date');
-          if (dateInput) {
-            dateInput.value = preferences.lastBookingDate;
-          }
+      if (!preferences) {
+        return;
+      }
+
+      if (preferences.lastBookingDate && bookingService.isDateAvailable(preferences.lastBookingDate)) {
+        this.selectedDate = preferences.lastBookingDate;
+        const dateInput = document.getElementById('booking-date');
+        if (dateInput) {
+          dateInput.value = preferences.lastBookingDate;
         }
-        if (preferences.lastBookingTime) {
-          this.selectedTime = preferences.lastBookingTime;
-        }
+
+        await this.loadTimeSlots(
+          preferences.lastBookingDate,
+          state.selectedService.duration,
+          state,
+          preferences.lastBookingTime || null
+        );
       }
     } catch (error) {
       console.error('Error loading booking preferences:', error);
@@ -356,14 +389,13 @@ class BookingComponent {
   }
 
   getMinDate() {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+    return toDateInputValue(new Date());
   }
 
   getMaxDate() {
     const maxDate = new Date();
     maxDate.setMonth(maxDate.getMonth() + 3);
-    return maxDate.toISOString().split('T')[0];
+    return toDateInputValue(maxDate);
   }
 
   destroy() {

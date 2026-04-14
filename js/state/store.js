@@ -2,6 +2,7 @@ class Store {
   constructor() {
     this.state = {
       user: null,
+      authReady: false,
       isAdmin: false,
       services: [],
       filteredServices: [],
@@ -37,17 +38,33 @@ class Store {
   }
 
   // User methods
+  setAuthState(user, isAdmin = false) {
+    this.setState({
+      user,
+      isAdmin,
+      authReady: true
+    });
+  }
+
   setUser(user) {
-    this.setState({ user });
+    this.setState({
+      user,
+      authReady: true
+    });
   }
 
   setAdmin(isAdmin) {
     this.setState({ isAdmin });
   }
 
+  setAuthReady(authReady) {
+    this.setState({ authReady });
+  }
+
   clearUser() {
     this.setState({
       user: null,
+      authReady: true,
       isAdmin: false,
       selectedService: null,
       userBookings: []
@@ -57,6 +74,7 @@ class Store {
   logout() {
     this.setState({
       user: null,
+      authReady: true,
       isAdmin: false,
       selectedService: null,
       userBookings: []
@@ -65,9 +83,13 @@ class Store {
 
   // Services methods
   setServices(services) {
+    const filteredServices = this.state.currentCategory === 'all'
+      ? services
+      : services.filter(service => service.category === this.state.currentCategory);
+
     this.setState({ 
       services,
-      filteredServices: services
+      filteredServices
     });
   }
 

@@ -2,15 +2,49 @@
 // DATE & TIME HELPERS
 // =====================
 
+function isDateOnlyString(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function isValidDateObject(value) {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
+export function toLocalDate(date) {
+  if (isValidDateObject(date)) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  if (isDateOnlyString(date)) {
+    const [year, month, day] = date.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  const parsedDate = new Date(date);
+  if (!isValidDateObject(parsedDate)) {
+    return new Date(NaN);
+  }
+
+  return parsedDate;
+}
+
 // Format date to DD.MM.YYYY or YYYY-MM-DD
 export function formatDate(date, format = 'DD.MM.YYYY') {
-  const d = new Date(date);
+  const d = toLocalDate(date);
+  if (!isValidDateObject(d)) {
+    return '';
+  }
+
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
 
   if (format === 'YYYY-MM-DD') return `${year}-${month}-${day}`;
   return `${day}.${month}.${year}`;
+}
+
+export function toDateInputValue(date) {
+  return formatDate(date, 'YYYY-MM-DD');
 }
 
 // Convert "HH:MM" → minutes
@@ -51,26 +85,46 @@ export function getDayName(date) {
     'Петък',
     'Събота'
   ];
-  const d = new Date(date);
+  const d = toLocalDate(date);
   return days[d.getDay()];
 }
 
 // Check if date is today
 export function isToday(date) {
-  const today = new Date().toDateString();
-  const check = new Date(date).toDateString();
-  return today === check;
+  return toDateInputValue(new Date()) === toDateInputValue(date);
 }
 
 // Check if date is in the past
 export function isPast(date) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const check = new Date(date);
-  check.setHours(0, 0, 0, 0);
+  const today = toLocalDate(new Date());
+  const check = toLocalDate(date);
 
   return check < today;
+}
+
+export function combineDateAndTime(date, time = '00:00') {
+  const localDate = toLocalDate(date);
+  if (!isValidDateObject(localDate)) {
+    return new Date(NaN);
+  }
+
+  const [hours = 0, minutes = 0] = String(time).split(':').map(Number);
+  return new Date(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    hours,
+    minutes
+  );
+}
+
+export function isDateTimePast(date, time = '00:00') {
+  const check = combineDateAndTime(date, time);
+  if (!isValidDateObject(check)) {
+    return false;
+  }
+
+  return check < new Date();
 }
 
 // =====================
@@ -120,7 +174,7 @@ export function escapeHtml(text) {
     '"': '&quot;',
     "'": '&#039;'
   };
-  return text.replace(/[&<>"']/g, m => map[m]);
+  return String(text ?? '').replace(/[&<>"']/g, m => map[m]);
 }
 
 // =====================
@@ -160,23 +214,162 @@ export function createElement(tag, attributes = {}, children = []) {
 // NOTIFICATIONS
 // =====================
 
+const DEFAULT_NOTIFICATION_MESSAGES = {
+  error: 'Възникна грешка. Моля, опитайте отново',
+  success: 'Действието беше изпълнено успешно',
+  warning: 'Моля, проверете въведените данни',
+  info: 'Имате ново известие'
+};
+
+const ERROR_CODE_MESSAGES = {
+  'auth/email-already-in-use': 'Този имейл вече е регистриран',
+  'auth/invalid-credential': 'Невалиден имейл или парола',
+  'auth/invalid-email': 'Невалиден имейл адрес',
+  'auth/network-request-failed': 'Проблем с връзката. Проверете интернет връзката си',
+  'auth/operation-not-allowed': 'Операцията не е разрешена',
+  'auth/too-many-requests': 'Твърде много опити. Моля, опитайте по-късно',
+  'auth/user-disabled': 'Този акаунт е деактивиран',
+  'auth/user-not-found': 'Не е намерен потребител с този имейл',
+  'auth/weak-password': 'Паролата трябва да бъде поне 6 символа',
+  'auth/wrong-password': 'Грешна парола',
+  'cancelled': 'Операцията беше прекъсната',
+  'failed-precondition': 'Операцията не може да бъде изпълнена в момента',
+  'not-found': 'Търсеният запис не беше намерен',
+  'permission-denied': 'Нямате права за това действие',
+  'resource-exhausted': 'Лимитът за заявки е достигнат. Опитайте отново по-късно',
+  'unauthenticated': 'Сесията ви изтече. Моля, влезте отново',
+  'unavailable': 'Услугата е временно недостъпна. Опитайте отново след малко'
+};
+
+const notificationHideTimers = new WeakMap();
+const notificationRemoveTimers = new WeakMap();
+const MAX_VISIBLE_NOTIFICATIONS = 4;
+
+export function getReadableErrorMessage(error, fallback = DEFAULT_NOTIFICATION_MESSAGES.error) {
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  if (!error || typeof error !== 'object') {
+    return fallback;
+  }
+
+  if (typeof error.error === 'string' && error.error.trim()) {
+    return error.error.trim();
+  }
+
+  if (typeof error.code === 'string' && ERROR_CODE_MESSAGES[error.code]) {
+    return ERROR_CODE_MESSAGES[error.code];
+  }
+
+  if (typeof error.message === 'string' && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return fallback;
+}
+
+function getNotificationContainer() {
+  const existingContainer = document.getElementById('notification-root');
+  if (existingContainer) {
+    return existingContainer;
+  }
+
+  const container = createElement('div', { id: 'notification-root' });
+  document.body.appendChild(container);
+  return container;
+}
+
+function getNotificationMessage(message, type) {
+  const fallback = DEFAULT_NOTIFICATION_MESSAGES[type] || DEFAULT_NOTIFICATION_MESSAGES.info;
+
+  if (type === 'error') {
+    return getReadableErrorMessage(message, fallback);
+  }
+
+  if (typeof message === 'string' && message.trim()) {
+    return message.trim();
+  }
+
+  if (message && typeof message === 'object') {
+    return getReadableErrorMessage(message, fallback);
+  }
+
+  return fallback;
+}
+
+function clearNotificationTimers(element) {
+  const hideTimer = notificationHideTimers.get(element);
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    notificationHideTimers.delete(element);
+  }
+
+  const removeTimer = notificationRemoveTimers.get(element);
+  if (removeTimer) {
+    clearTimeout(removeTimer);
+    notificationRemoveTimers.delete(element);
+  }
+}
+
+function removeNotification(element) {
+  clearNotificationTimers(element);
+  element.remove();
+}
+
+function scheduleNotificationRemoval(element, duration) {
+  clearNotificationTimers(element);
+
+  const hideTimer = setTimeout(() => {
+    element.classList.remove('show');
+
+    const removeTimer = setTimeout(() => {
+      removeNotification(element);
+    }, 300);
+
+    notificationRemoveTimers.set(element, removeTimer);
+  }, duration);
+
+  notificationHideTimers.set(element, hideTimer);
+}
+
 export function showNotification(message, type = 'info', duration = 3000) {
-  const container = document.getElementById('notification-root') || document.body;
+  const container = getNotificationContainer();
+  const normalizedMessage = getNotificationMessage(message, type);
+  const notificationKey = `${type}:${normalizedMessage}`;
+  const existingNotification = Array.from(container.querySelectorAll('.notification'))
+    .find((element) => element.dataset.notificationKey === notificationKey);
+
+  if (existingNotification) {
+    container.appendChild(existingNotification);
+    existingNotification.classList.add('show');
+    scheduleNotificationRemoval(existingNotification, duration);
+    return existingNotification;
+  }
+
+  while (container.children.length >= MAX_VISIBLE_NOTIFICATIONS) {
+    removeNotification(container.firstElementChild);
+  }
 
   const el = createElement(
     'div',
-    { className: `notification notification-${type}` },
-    [message]
+    {
+      className: `notification notification-${type}`,
+      role: type === 'error' || type === 'warning' ? 'alert' : 'status',
+      'aria-live': type === 'error' || type === 'warning' ? 'assertive' : 'polite',
+      'aria-atomic': 'true',
+      dataset: {
+        notificationKey
+      }
+    },
+    [normalizedMessage]
   );
 
   container.appendChild(el);
 
   setTimeout(() => el.classList.add('show'), 10);
-
-  setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 300);
-  }, duration);
+  scheduleNotificationRemoval(el, duration);
+  return el;
 }
 
 // =====================

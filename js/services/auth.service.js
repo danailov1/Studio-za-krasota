@@ -18,15 +18,13 @@ class AuthService {
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userData = await this.getUserData(user.uid);
-        store.setUser({
+        store.setAuthState({
           uid: user.uid,
           email: user.email,
           displayName: userData?.displayName || user.email.split('@')[0],
           phone: userData?.phone || '',
           role: userData?.role || 'user'
-        });
-        
-        store.setAdmin(userData?.role === 'admin');
+        }, userData?.role === 'admin');
       } else {
         store.logout();
       }
@@ -105,7 +103,9 @@ class AuthService {
   getErrorMessage(errorCode) {
     const errors = {
       'auth/email-already-in-use': 'Този имейл вече е регистриран',
+      'auth/invalid-credential': 'Невалиден имейл или парола',
       'auth/invalid-email': 'Невалиден имейл адрес',
+      'auth/network-request-failed': 'Проблем с връзката. Проверете интернет връзката си',
       'auth/operation-not-allowed': 'Операцията не е разрешена',
       'auth/weak-password': 'Паролата трябва да бъде поне 6 символа',
       'auth/user-disabled': 'Този акаунт е деактивиран',

@@ -1,11 +1,12 @@
 import store from '../state/store.js';
 import dataService from '../services/data.service.js';
-import { formatPrice, showNotification } from '../utils/helpers.js';
+import { escapeHtml, formatPrice, showNotification } from '../utils/helpers.js';
 
 class ServicesComponent {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
     this.unsubscribe = null;
+    this.unsubscribeServices = null;
     this.isInitialized = false;
     this.filterListenerAttached = false;
     this.bookListenerAttached = false;
@@ -16,29 +17,53 @@ class ServicesComponent {
   }
 
   async init() {
-    // Prevent double initialization
     if (this.isInitialized) return;
     this.isInitialized = true;
 
-    store.setLoading(true);
-    
+    this.unsubscribe = store.subscribe((state) => {
+      if (this.isFirstRender) return;
+      this.scheduleRender(state);
+    });
+
+    this.subscribeToServiceUpdates();
+    this.attachFilterListeners();
+
     try {
-      const services = await dataService.getServices();
-      store.setServices(services);
-      
-      // Only subscribe once
-      this.unsubscribe = store.subscribe((state) => {
-        // Skip first render from subscriber (we handle it explicitly below)
-        if (this.isFirstRender) return;
-        this.scheduleRender(state);
-      });
-      
-      this.isFirstRender = false;
-      this.render(store.getState());
-      this.attachFilterListeners();
+      await this.refreshServices();
     } catch (error) {
       console.error('Services init error:', error);
       showNotification('Грешка при зареждане на услугите', 'error');
+    } finally {
+      if (this.isFirstRender) {
+        this.isFirstRender = false;
+      }
+      this.render(store.getState());
+    }
+  }
+
+  subscribeToServiceUpdates() {
+    if (this.unsubscribeServices) {
+      return;
+    }
+
+    this.unsubscribeServices = dataService.subscribeToServices(
+      (services) => {
+        store.setServices(services);
+        store.setLoading(false);
+      },
+      (error) => {
+        console.error('Services realtime update error:', error);
+        showNotification('Проблем при синхронизирането на услугите. Опреснете страницата.', 'warning', 5000);
+      }
+    );
+  }
+
+  async refreshServices() {
+    store.setLoading(true);
+
+    try {
+      const services = await dataService.getServices();
+      store.setServices(services);
     } finally {
       store.setLoading(false);
     }
@@ -55,7 +80,7 @@ class ServicesComponent {
   }
 
   render(state) {
-    const { filteredServices, loading, user } = state;
+    const { filteredServices, loading } = state;
 
     if (loading) {
       this.container.innerHTML = '<div class="loading">⏳ Зареждане...</div>';
@@ -73,20 +98,25 @@ class ServicesComponent {
           </div>
         </div>
       `;
+
       const refreshBtn = this.container.querySelector('#refresh-services');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', async () => {
-          this.init();
+          try {
+            await this.refreshServices();
+          } catch (error) {
+            console.error('Services refresh error:', error);
+            showNotification('Грешка при опресняване на услугите', 'error');
+          }
         });
       }
+
       return;
     }
 
     this.container.innerHTML = filteredServices.map(service => {
-      // Replace old placeholder URLs with SVG placeholders
       let imageUrl = service.image;
       if (imageUrl && imageUrl.includes('via.placeholder.com')) {
-        // Generate a local SVG placeholder for old data
         const serviceName = service.name || 'Service';
         imageUrl = `data:image/svg+xml,${encodeURIComponent(`<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
     <rect width="300" height="200" fill="#e0e0e0"/>
@@ -95,18 +125,23 @@ class ServicesComponent {
     </text>
   </svg>`)}`;
       }
-      
+
+      const safeName = escapeHtml(service.name);
+      const safeDescription = escapeHtml(service.description);
+      const safeImageUrl = imageUrl ? escapeHtml(imageUrl) : '';
+      const placeholder = safeName.charAt(0) || 'S';
+
       return `
       <div class="service-card" data-service-id="${service.id}">
         <div class="service-image">
-          ${imageUrl 
-            ? `<img src="${imageUrl}" alt="${service.name}">`
-            : `<div class="service-placeholder">${service.name.charAt(0)}</div>`
+          ${safeImageUrl
+            ? `<img src="${safeImageUrl}" alt="${safeName}">`
+            : `<div class="service-placeholder">${placeholder}</div>`
           }
         </div>
         <div class="service-content">
-          <h3>${service.name}</h3>
-          <p class="service-description">${service.description}</p>
+          <h3>${safeName}</h3>
+          <p class="service-description">${safeDescription}</p>
           <div class="service-meta">
             <span class="service-duration">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -129,10 +164,8 @@ class ServicesComponent {
   }
 
   attachFilterListeners() {
-    // Use event delegation instead of attaching to each button
     const filtersContainer = document.querySelector('.filters');
     
-    // Remove old listener if exists
     if (this.filterListenerAttached) {
       filtersContainer?.removeEventListener('click', this.filterClickHandler);
     }
@@ -154,10 +187,8 @@ class ServicesComponent {
   }
 
   attachEventListeners(state) {
-    // Use event delegation instead of attaching to each button
     const servicesGrid = this.container;
     
-    // Remove old listener if exists
     if (this.bookListenerAttached) {
       servicesGrid.removeEventListener('click', this.bookClickHandler);
     }
@@ -177,7 +208,6 @@ class ServicesComponent {
         if (service) {
           store.selectService(service);
           
-          // Scroll to booking section
           const bookingSection = document.getElementById('booking-section');
           if (bookingSection) {
             bookingSection.classList.remove('hidden');
@@ -195,11 +225,16 @@ class ServicesComponent {
     if (this.unsubscribe) {
       this.unsubscribe();
     }
-    // Clean up event listeners
+
+    if (this.unsubscribeServices) {
+      this.unsubscribeServices();
+    }
+
     if (this.filterListenerAttached && this.filterClickHandler) {
       const filtersContainer = document.querySelector('.filters');
       filtersContainer?.removeEventListener('click', this.filterClickHandler);
     }
+
     if (this.bookListenerAttached && this.bookClickHandler) {
       this.container?.removeEventListener('click', this.bookClickHandler);
     }

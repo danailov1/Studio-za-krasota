@@ -14,6 +14,21 @@ import {
   onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
+const DEFAULT_SETTINGS = Object.freeze({
+  workHours: {
+    start: '09:00',
+    end: '18:00'
+  },
+  slotDuration: 30
+});
+
+function cloneDefaultSettings() {
+  return {
+    workHours: { ...DEFAULT_SETTINGS.workHours },
+    slotDuration: DEFAULT_SETTINGS.slotDuration
+  };
+}
+
 class DataService {
   // Services CRUD
   async getServices() {
@@ -205,7 +220,7 @@ class DataService {
   }
 
   // Real-time listeners
-  subscribeToBookings(callback, filters = {}) {
+  subscribeToBookings(callback, filters = {}, errorCallback = null) {
     const bookingsCol = collection(db, 'bookings');
     let q = bookingsCol;
 
@@ -213,28 +228,48 @@ class DataService {
       q = query(q, where('userId', '==', filters.userId));
     }
 
-    q = query(q, orderBy('date', 'desc'));
+    q = query(q, orderBy('date', 'desc'), orderBy('time', 'asc'));
 
-    return onSnapshot(q, (snapshot) => {
-      const bookings = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      callback(bookings);
-    });
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const bookings = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        callback(bookings);
+      },
+      (error) => {
+        if (errorCallback) {
+          errorCallback(error);
+        } else {
+          console.error('Subscribe to bookings error:', error);
+        }
+      }
+    );
   }
 
-  subscribeToServices(callback) {
+  subscribeToServices(callback, errorCallback = null) {
     const servicesCol = collection(db, 'services');
     const q = query(servicesCol, orderBy('order', 'asc'));
 
-    return onSnapshot(q, (snapshot) => {
-      const services = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      callback(services);
-    });
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const services = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        callback(services);
+      },
+      (error) => {
+        if (errorCallback) {
+          errorCallback(error);
+        } else {
+          console.error('Subscribe to services error:', error);
+        }
+      }
+    );
   }
 
   // User Booking Preferences
@@ -251,10 +286,10 @@ class DataService {
       const updatedPrefs = { ...existingPrefs, ...preferences };
       
       // Update user document
-      await updateDoc(userRef, {
+      await setDoc(userRef, {
         bookingPreferences: updatedPrefs,
         updatedAt: new Date().toISOString()
-      });
+      }, { merge: true });
       
       return updatedPrefs;
     } catch (error) {
@@ -311,7 +346,9 @@ class DataService {
     }
   }
 
-  async getSettings() {
+  async getSettings(options = {}) {
+    const { useFallback = true } = options;
+
     try {
       const settingsCol = collection(db, 'settings');
       const settingsRef = doc(settingsCol, 'global');
@@ -321,23 +358,14 @@ class DataService {
         return settingsDoc.data();
       }
       
-      // Return defaults if not found
-      return {
-        workHours: {
-          start: '09:00',
-          end: '18:00'
-        },
-        slotDuration: 30
-      };
+      return cloneDefaultSettings();
     } catch (error) {
       console.error('Get settings error:', error);
-      return {
-        workHours: {
-          start: '09:00',
-          end: '18:00'
-        },
-        slotDuration: 30
-      };
+      if (useFallback) {
+        return cloneDefaultSettings();
+      }
+
+      throw error;
     }
   }
 
@@ -351,13 +379,7 @@ class DataService {
         if (doc.exists()) {
           callback(doc.data());
         } else {
-          callback({
-            workHours: {
-              start: '09:00',
-              end: '18:00'
-            },
-            slotDuration: 30
-          });
+          callback(cloneDefaultSettings());
         }
       });
     } catch (error) {

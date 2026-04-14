@@ -1,7 +1,6 @@
 import dataService from '../services/data.service.js';
 import bookingService from '../services/booking.service.js';
-import store from '../state/store.js';
-import { formatDate, formatPrice, showNotification, showModal } from '../utils/helpers.js';
+import { escapeHtml, formatDate, formatPrice, showNotification, showModal, toDateInputValue } from '../utils/helpers.js';
 import { validateService, displayFormErrors, clearFormErrors } from '../utils/validators.js';
 
 class AdminComponent {
@@ -66,12 +65,10 @@ class AdminComponent {
   // ===== DASHBOARD =====
   async loadDashboard() {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = toDateInputValue(new Date());
       const currentMonth = new Date();
-      const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-        .toISOString().split('T')[0];
-      const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
-        .toISOString().split('T')[0];
+      const monthStart = toDateInputValue(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+      const monthEnd = toDateInputValue(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
 
       const allBookings = await bookingService.getAllBookings();
       const todayBookings = allBookings.filter(b => b.date === today);
@@ -104,7 +101,6 @@ class AdminComponent {
 
   async loadPopularServices(bookings) {
     try {
-      const services = await dataService.getServices();
       const serviceBookings = {};
 
       bookings.forEach(booking => {
@@ -119,7 +115,7 @@ class AdminComponent {
 
       const html = sorted.map(([name, count]) => `
         <div class="popular-service-item">
-          <span class="service-name">${name}</span>
+          <span class="service-name">${escapeHtml(name)}</span>
           <span class="service-count">${count} резервации</span>
         </div>
       `).join('');
@@ -143,12 +139,13 @@ class AdminComponent {
       const sorted = Object.entries(bookingsByDay)
         .sort((a, b) => new Date(b[0]) - new Date(a[0]))
         .slice(0, 7);
+      const maxCount = Math.max(...sorted.map(([, count]) => count), 1);
 
       const html = sorted.map(([day, count]) => `
         <div class="day-item">
           <span class="day-date">${formatDate(day)}</span>
           <div class="day-bar">
-            <div class="day-count" style="width: ${(count / 10) * 100}%">${count}</div>
+            <div class="day-count" style="width: ${(count / maxCount) * 100}%">${count}</div>
           </div>
         </div>
       `).join('');
@@ -168,10 +165,10 @@ class AdminComponent {
       const html = services.map(service => `
         <div class="service-item" data-service-id="${service.id}">
           <div class="service-info">
-            <h3>${service.name}</h3>
-            <p>${service.description}</p>
+            <h3>${escapeHtml(service.name)}</h3>
+            <p>${escapeHtml(service.description)}</p>
             <div class="service-meta">
-              <span class="service-category">${service.category}</span>
+              <span class="service-category">${escapeHtml(service.category)}</span>
               <span class="service-duration">${service.duration} мин</span>
               <span class="service-price">${formatPrice(service.price)}</span>
             </div>
@@ -190,9 +187,10 @@ class AdminComponent {
       const list = document.getElementById('services-list');
       list.innerHTML = html || '<p class="no-data">Няма услуги</p>';
 
-      // Attach event listeners
-      document.getElementById('add-service-btn').addEventListener('click', 
-        () => this.showServiceModal());
+      const addServiceBtn = document.getElementById('add-service-btn');
+      if (addServiceBtn) {
+        addServiceBtn.onclick = () => this.showServiceModal();
+      }
 
       list.querySelectorAll('.edit-service').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -209,8 +207,9 @@ class AdminComponent {
             try {
               await dataService.deleteService(serviceId);
               showNotification('Услугата е изтрита успешно', 'success');
-              this.loadServices();
+              await this.loadServices();
             } catch (error) {
+              console.error('Delete service error:', error);
               showNotification('Грешка при изтриване на услугата', 'error');
             }
           }
@@ -229,7 +228,7 @@ class AdminComponent {
       <form id="service-form" class="service-form">
         <div class="form-group">
           <label for="service-name">Име</label>
-          <input type="text" id="service-name" name="name" value="${service?.name || ''}" required>
+          <input type="text" id="service-name" name="name" value="${escapeHtml(service?.name || '')}" required>
         </div>
 
         <div class="form-group">
@@ -245,29 +244,29 @@ class AdminComponent {
 
         <div class="form-group">
           <label for="service-description">Описание</label>
-          <textarea id="service-description" name="description" rows="3" required>${service?.description || ''}</textarea>
+          <textarea id="service-description" name="description" rows="3" required>${escapeHtml(service?.description || '')}</textarea>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="service-price">Цена (лв)</label>
-            <input type="number" id="service-price" name="price" step="0.01" value="${service?.price || ''}" required>
+            <input type="number" id="service-price" name="price" step="0.01" value="${service?.price ?? ''}" required>
           </div>
 
           <div class="form-group">
             <label for="service-duration">Продължителност (мин)</label>
-            <input type="number" id="service-duration" name="duration" value="${service?.duration || ''}" required>
+            <input type="number" id="service-duration" name="duration" value="${service?.duration ?? ''}" required>
           </div>
         </div>
 
         <div class="form-group">
           <label for="service-image">URL на изображение</label>
-          <input type="url" id="service-image" name="image" value="${service?.image || ''}">
+          <input type="url" id="service-image" name="image" value="${escapeHtml(service?.image || '')}">
         </div>
 
         <div class="form-group">
           <label for="service-order">Ред</label>
-          <input type="number" id="service-order" name="order" value="${service?.order || '0'}">
+          <input type="number" id="service-order" name="order" value="${service?.order ?? 0}">
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">
@@ -312,8 +311,9 @@ class AdminComponent {
           showNotification('Услугата е създана успешно', 'success');
         }
         modal.remove();
-        this.loadServices();
+        await this.loadServices();
       } catch (error) {
+        console.error('Save service error:', error);
         showNotification('Грешка при запазване на услугата', 'error');
       }
     });
@@ -323,12 +323,31 @@ class AdminComponent {
   async loadBookings() {
     try {
       const allBookings = await bookingService.getAllBookings();
-      this.displayBookings(allBookings);
       this.attachFilterListeners(allBookings);
+      this.applyBookingFilters(allBookings);
     } catch (error) {
       console.error('Load bookings error:', error);
       showNotification('Грешка при зареждане на резервациите', 'error');
     }
+  }
+
+  applyBookingFilters(allBookings) {
+    const filterDate = document.getElementById('filter-date');
+    const filterStatus = document.getElementById('filter-status');
+    const selectedDate = filterDate?.value;
+    const selectedStatus = filterStatus?.value;
+
+    let filtered = allBookings;
+
+    if (selectedDate) {
+      filtered = filtered.filter(booking => booking.date === selectedDate);
+    }
+
+    if (selectedStatus) {
+      filtered = filtered.filter(booking => booking.status === selectedStatus);
+    }
+
+    this.displayBookings(filtered);
   }
 
   displayBookings(bookings) {
@@ -341,8 +360,8 @@ class AdminComponent {
         <div class="booking-item ${statusClass}" data-booking-id="${booking.id}">
           <div class="booking-card-header">
             <div class="booking-info">
-              <h3>${booking.userName}</h3>
-              <p class="booking-service">${booking.serviceName}</p>
+              <h3>${escapeHtml(booking.userName || 'Без име')}</h3>
+              <p class="booking-service">${escapeHtml(booking.serviceName || 'Неизвестна услуга')}</p>
             </div>
             <div class="booking-status">
               <span class="status-badge">${this.getStatusText(booking.status)}</span>
@@ -350,8 +369,8 @@ class AdminComponent {
           </div>
           <div class="user-card-body">
             <div class="booking-details">
-              <p class="booking-date"><i class="material-icons">event</i> ${formatDate(booking.date)} в ${booking.time}</p>
-              <p class="booking-contact"><i class="material-icons">email</i> ${booking.userEmail} • <i class="material-icons">phone</i> ${booking.userPhone}</p>
+              <p class="booking-date"><i class="material-icons">event</i> ${formatDate(booking.date)} в ${escapeHtml(booking.time || '--:--')}</p>
+              <p class="booking-contact"><i class="material-icons">email</i> ${escapeHtml(booking.userEmail || 'Няма имейл')} • <i class="material-icons">phone</i> ${escapeHtml(booking.userPhone || 'Няма телефон')}</p>
             </div>
             <div class="booking-actions">
               ${booking.status === 'pending' ? `
@@ -382,44 +401,30 @@ class AdminComponent {
     const filterDate = document.getElementById('filter-date');
     const filterStatus = document.getElementById('filter-status');
 
-    const applyFilters = () => {
-      const selectedDate = filterDate?.value;
-      const selectedStatus = filterStatus?.value;
-
-      let filtered = allBookings;
-
-      // Filter by date
-      if (selectedDate) {
-        filtered = filtered.filter(b => b.date === selectedDate);
-      }
-
-      // Filter by status
-      if (selectedStatus) {
-        filtered = filtered.filter(b => b.status === selectedStatus);
-      }
-
-      this.displayBookings(filtered);
-    };
-
     if (filterDate) {
-      filterDate.addEventListener('change', applyFilters);
+      filterDate.onchange = () => this.applyBookingFilters(allBookings);
     }
 
     if (filterStatus) {
-      filterStatus.addEventListener('change', applyFilters);
+      filterStatus.onchange = () => this.applyBookingFilters(allBookings);
     }
   }
 
   attachBookingActions(list) {
-    // Attach event listeners for booking actions
     list.querySelectorAll('.confirm-booking').forEach(btn => {
       btn.addEventListener('click', async () => {
         const bookingId = btn.dataset.bookingId;
         try {
-          await bookingService.updateBookingStatus(bookingId, 'confirmed');
+          const result = await bookingService.updateBookingStatus(bookingId, 'confirmed');
+          if (!result.success) {
+            showNotification(result.error || 'Грешка при потвърждение на резервацията', 'error');
+            return;
+          }
+
           showNotification('Резервацията е потвърдена', 'success');
-          this.loadBookings();
+          await this.refreshBookingViews();
         } catch (error) {
+          console.error('Confirm booking error:', error);
           showNotification('Грешка при потвърждение на резервацията', 'error');
         }
       });
@@ -430,11 +435,17 @@ class AdminComponent {
         const bookingId = btn.dataset.bookingId;
         if (confirm('Сигурни ли сте, че искате да отмените тази резервация?')) {
           try {
-            await bookingService.cancelBooking(bookingId);
+            const result = await bookingService.cancelBooking(bookingId);
+            if (!result.success) {
+              showNotification(result.error || 'Грешка при отмяна на резервацията', 'error');
+              return;
+            }
+
             showNotification('Резервацията е отменена', 'success');
-            this.loadBookings();
+            await this.refreshBookingViews();
           } catch (error) {
-            showNotification(error.message, 'error');
+            console.error('Admin cancel booking error:', error);
+            showNotification('Грешка при отмяна на резервацията', 'error');
           }
         }
       });
@@ -442,12 +453,36 @@ class AdminComponent {
 
     list.querySelectorAll('.view-booking').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const bookingId = btn.dataset.bookingId;
-        const allBookings = await bookingService.getAllBookings();
-        const booking = allBookings.find(b => b.id === bookingId);
-        this.showBookingDetails(booking);
+        try {
+          const bookingId = btn.dataset.bookingId;
+          const allBookings = await bookingService.getAllBookings();
+          const booking = allBookings.find(b => b.id === bookingId);
+          if (!booking) {
+            showNotification('Резервацията не е намерена', 'error');
+            return;
+          }
+
+          this.showBookingDetails(booking);
+        } catch (error) {
+          console.error('Load booking details error:', error);
+          showNotification('Грешка при зареждане на детайлите за резервацията', 'error');
+        }
       });
     });
+  }
+
+  async refreshBookingViews() {
+    const refreshTasks = [this.loadBookings()];
+
+    if (document.getElementById('dashboard-section')?.classList.contains('active')) {
+      refreshTasks.push(this.loadDashboard());
+    }
+
+    if (document.getElementById('users-section')?.classList.contains('active')) {
+      refreshTasks.push(this.loadUsers());
+    }
+
+    await Promise.allSettled(refreshTasks);
   }
 
   showBookingDetails(booking) {
@@ -456,31 +491,31 @@ class AdminComponent {
       <div class="booking-details">
         <div class="detail-group">
           <label>Потребител:</label>
-          <p>${booking.userName}</p>
+          <p>${escapeHtml(booking.userName || 'Без име')}</p>
         </div>
         <div class="detail-group">
           <label>Услуга:</label>
-          <p>${booking.serviceName} - ${formatPrice(booking.servicePrice)}</p>
+          <p>${escapeHtml(booking.serviceName || 'Неизвестна услуга')} - ${formatPrice(booking.servicePrice || 0)}</p>
         </div>
         <div class="detail-group">
           <label>Дата и час:</label>
-          <p>${formatDate(booking.date)} в ${booking.time}</p>
+          <p>${formatDate(booking.date)} в ${escapeHtml(booking.time || '--:--')}</p>
         </div>
         <div class="detail-group">
           <label>Продължителност:</label>
-          <p>${booking.serviceDuration} минути</p>
+          <p>${booking.serviceDuration || 0} минути</p>
         </div>
         <div class="detail-group">
           <label>Контакти:</label>
           <p>
-            Email: ${booking.userEmail}<br>
-            Телефон: ${booking.userPhone}
+            Email: ${escapeHtml(booking.userEmail || 'Няма имейл')}<br>
+            Телефон: ${escapeHtml(booking.userPhone || 'Няма телефон')}
           </p>
         </div>
         ${booking.notes ? `
           <div class="detail-group">
             <label>Забележки:</label>
-            <p>${booking.notes}</p>
+            <p>${escapeHtml(booking.notes)}</p>
           </div>
         ` : ''}
         <div class="detail-group">
@@ -534,16 +569,16 @@ class AdminComponent {
         <div class="user-card">
           <div class="user-card-header">
             <div class="user-avatar">
-              <span class="avatar-initial">${user.userName.charAt(0).toUpperCase()}</span>
+              <span class="avatar-initial">${escapeHtml((user.userName || '?').charAt(0).toUpperCase())}</span>
             </div>
             <div class="user-basic-info">
-              <h3>${user.userName}</h3>
-              <p class="user-email">${user.email}</p>
+              <h3>${escapeHtml(user.userName || 'Без име')}</h3>
+              <p class="user-email">${escapeHtml(user.email || 'Няма имейл')}</p>
             </div>
           </div>
           <div class="user-card-body">
             <div class="user-contact-info">
-              <span class="contact-item"><i class="material-icons">phone</i> ${user.phone}</span>
+              <span class="contact-item"><i class="material-icons">phone</i> ${escapeHtml(user.phone || 'Няма телефон')}</span>
             </div>
             <div class="user-stats-grid">
               <div class="stat-item">
@@ -570,7 +605,7 @@ class AdminComponent {
 
   async loadSavedSettings() {
     try {
-      const settings = await dataService.getSettings();
+      const settings = await dataService.getSettings({ useFallback: false });
       
       // Load work hours
       if (settings.workHours) {
@@ -587,20 +622,19 @@ class AdminComponent {
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+      throw error;
     }
   }
 
   attachSettingsListeners() {
-    // Work hours settings
     const saveHoursBtn = document.getElementById('save-hours');
     if (saveHoursBtn) {
-      saveHoursBtn.addEventListener('click', () => this.saveWorkHours());
+      saveHoursBtn.onclick = () => this.saveWorkHours();
     }
 
-    // Slot duration settings
     const saveDurationBtn = document.getElementById('save-duration');
     if (saveDurationBtn) {
-      saveDurationBtn.addEventListener('click', () => this.saveDuration());
+      saveDurationBtn.onclick = () => this.saveDuration();
     }
   }
 

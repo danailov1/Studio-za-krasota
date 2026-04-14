@@ -1,5 +1,5 @@
 import dataService from './data.service.js';
-import { formatDate, addMinutes, parseTime } from '../utils/helpers.js';
+import { isDateTimePast, parseTime } from '../utils/helpers.js';
 
 class BookingService {
   constructor() {
@@ -74,7 +74,7 @@ class BookingService {
     const end = parseTime(this.workingHours.end);
     
     let current = start;
-    while (current < end - serviceDuration) {
+    while (current <= end - serviceDuration) {
       const hours = Math.floor(current / 60);
       const minutes = current % 60;
       const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
@@ -158,11 +158,7 @@ class BookingService {
       }
 
       // Check if booking can be cancelled (e.g., not in the past, not already completed)
-      const bookingDate = new Date(booking.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (bookingDate < today) {
+      if (isDateTimePast(booking.date, booking.time)) {
         throw new Error('Не можете да анулирате минала резервация');
       }
 

@@ -27,22 +27,39 @@ const sampleServices = [
   { name: "Подстригване",        category: "hair",  price: 20, duration: 30, order: 6, image: generateSVG("Коса") }
 ];
 
+function getFutureDate(offsetDays) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 const sampleBookings = [
   {
-    userId: "user1",
-    userName: "Мария",
-    serviceName: "Класически маникюр",
-    date: "2025-11-20",
+    userId: "demo-user-1",
+    userName: "Мария Иванова",
+    userEmail: "maria@example.com",
+    userPhone: "0888 123 456",
+    serviceIndex: 0,
+    dateOffsetDays: 1,
     time: "10:00",
-    status: "confirmed"
+    status: "confirmed",
+    notes: "Предпочита нежен маникюр."
   },
   {
-    userId: "user2",
-    userName: "Анна",
-    serviceName: "Гел маникюр",
-    date: "2025-11-21",
+    userId: "demo-user-2",
+    userName: "Анна Петрова",
+    userEmail: "anna@example.com",
+    userPhone: "0899 987 654",
+    serviceIndex: 1,
+    dateOffsetDays: 2,
     time: "14:00",
-    status: "pending"
+    status: "pending",
+    notes: ""
   }
 ];
 
@@ -66,12 +83,26 @@ export async function seedDatabase() {
         createdAt: new Date().toISOString()
       });
       ids[`service${i + 1}`] = ref.id;
+      ids[i] = ref.id;
     }
 
     const bookingsRef = collection(db, "bookings");
     for (const b of sampleBookings) {
+      const service = sampleServices[b.serviceIndex];
+
       await addDoc(bookingsRef, {
-        ...b,
+        userId: b.userId,
+        userName: b.userName,
+        userEmail: b.userEmail,
+        userPhone: b.userPhone,
+        serviceId: ids[b.serviceIndex],
+        serviceName: service.name,
+        servicePrice: service.price,
+        serviceDuration: service.duration,
+        date: getFutureDate(b.dateOffsetDays),
+        time: b.time,
+        status: b.status,
+        notes: b.notes,
         createdAt: new Date().toISOString()
       });
     }

@@ -16,11 +16,9 @@ class AdminApp {
     return new Promise((resolve) => {
       const checkState = () => {
         const state = store.getState();
-        if (state.user !== null || state.user === false) {
-          // Auth state has been determined
+        if (state.authReady) {
           resolve(state);
         } else {
-          // Still waiting for auth state
           setTimeout(checkState, 100);
         }
       };
@@ -37,7 +35,7 @@ class AdminApp {
       const state = await Promise.race([
         this.waitForAuthState(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth state timeout')), 3000)
+          setTimeout(() => reject(new Error('Auth state timeout')), 5000)
         )
       ]);
 
@@ -124,7 +122,12 @@ class AdminApp {
 
   async logout() {
     try {
-      await authService.logout();
+      const result = await authService.logout();
+      if (!result.success) {
+        showNotification(result.error || 'Грешка при излизане', 'error');
+        return;
+      }
+
       store.clearUser();
       showNotification('Излязохте успешно', 'success');
       await new Promise(resolve => setTimeout(resolve, 1000));

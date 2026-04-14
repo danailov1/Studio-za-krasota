@@ -1,14 +1,18 @@
 import store from '../state/store.js';
 import bookingService from '../services/booking.service.js';
-import { formatDate, formatPrice, isPast, showNotification, showModal } from '../utils/helpers.js';
+import dataService from '../services/data.service.js';
+import { escapeHtml, formatDate, formatPrice, isDateTimePast, showNotification, showModal } from '../utils/helpers.js';
 
 class CalendarComponent {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
     this.unsubscribe = null;
+    this.unsubscribeBookings = null;
     this.isInitialized = false;
     this.renderScheduled = false;
     this.lastUserId = null;
+    this.cancelListenerAttached = false;
+    this.cancelClickHandler = null;
   }
 
   async init() {
@@ -18,16 +22,17 @@ class CalendarComponent {
     // Subscribe to state changes
     this.unsubscribe = store.subscribe((state) => {
       if (state.user) {
-        // Load bookings ONLY when user changes
         if (this.lastUserId !== state.user.uid) {
           this.lastUserId = state.user.uid;
-          this.loadUserBookings(state.user.uid);
+          this.subscribeToUserBookings(state.user.uid);
         }
-        // Schedule render
         this.scheduleRender(state);
       } else {
-        // Clear when user logs out
         this.lastUserId = null;
+        if (this.unsubscribeBookings) {
+          this.unsubscribeBookings();
+          this.unsubscribeBookings = null;
+        }
         this.render(state);
       }
     });
@@ -35,7 +40,7 @@ class CalendarComponent {
     const state = store.getState();
     if (state.user) {
       this.lastUserId = state.user.uid;
-      await this.loadUserBookings(state.user.uid);
+      this.subscribeToUserBookings(state.user.uid);
       this.render(state);
     } else {
       this.render(state);
@@ -52,14 +57,23 @@ class CalendarComponent {
     });
   }
 
-  async loadUserBookings(userId) {
-    try {
-      const bookings = await bookingService.getUserBookings(userId);
-      store.setUserBookings(bookings);
-    } catch (error) {
-      console.error('Load user bookings error:', error);
-      showNotification('Грешка при зареждане на резервациите', 'error');
+  subscribeToUserBookings(userId) {
+    if (this.unsubscribeBookings) {
+      this.unsubscribeBookings();
     }
+
+    this.unsubscribeBookings = dataService.subscribeToBookings((bookings) => {
+      const sortedBookings = [...bookings].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateB - dateA;
+      });
+
+      store.setUserBookings(sortedBookings);
+    }, { userId }, (error) => {
+      console.error('User bookings realtime update error:', error);
+      showNotification('Грешка при синхронизиране на резервациите', 'error');
+    });
   }
 
   render(state) {
@@ -92,10 +106,14 @@ class CalendarComponent {
     }
 
     const upcomingBookings = userBookings.filter(b => 
-      !isPast(b.date) && b.status !== 'cancelled'
+      !isDateTimePast(b.date, b.time) &&
+      b.status !== 'cancelled' &&
+      b.status !== 'completed'
     );
     const pastBookings = userBookings.filter(b => 
-      isPast(b.date) || b.status === 'cancelled'
+      isDateTimePast(b.date, b.time) ||
+      b.status === 'cancelled' ||
+      b.status === 'completed'
     );
 
     this.container.innerHTML = `
@@ -135,13 +153,13 @@ class CalendarComponent {
         <div class="booking-header">
           <div class="booking-date">
             <span class="date">${formatDate(booking.date)}</span>
-            <span class="time">${booking.time}</span>
+            <span class="time">${escapeHtml(booking.time)}</span>
           </div>
           <span class="booking-status status-${statusClass}">${statusText}</span>
         </div>
         
         <div class="booking-body">
-          <h4>${booking.serviceName}</h4>
+          <h4>${escapeHtml(booking.serviceName)}</h4>
           <div class="booking-details">
             <div class="detail">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -158,7 +176,7 @@ class CalendarComponent {
               <span>${formatPrice(booking.servicePrice)}</span>
             </div>
           </div>
-          ${booking.notes ? `<p class="booking-notes"><strong>Забележки:</strong> ${booking.notes}</p>` : ''}
+          ${booking.notes ? `<p class="booking-notes"><strong>Забележки:</strong> ${escapeHtml(booking.notes)}</p>` : ''}
         </div>
 
         ${!isPastBooking && booking.status !== 'cancelled' ? `
@@ -220,14 +238,8 @@ class CalendarComponent {
 
       if (result.success) {
         showNotification('Резервацията е отменена успешно', 'success');
-        
-        // Reload bookings
-        const state = store.getState();
-        if (state.user) {
-          await this.loadUserBookings(state.user.uid);
-        }
       } else {
-        showNotification(result.error, 'error');
+        showNotification(result.error || 'Грешка при отмяна на резервацията', 'error');
       }
     } catch (error) {
       console.error('Cancel booking error:', error);
@@ -238,6 +250,9 @@ class CalendarComponent {
   destroy() {
     if (this.unsubscribe) {
       this.unsubscribe();
+    }
+    if (this.unsubscribeBookings) {
+      this.unsubscribeBookings();
     }
     if (this.cancelListenerAttached && this.cancelClickHandler) {
       this.container.removeEventListener('click', this.cancelClickHandler);

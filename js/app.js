@@ -86,8 +86,7 @@ class App {
         const result = await seedDatabase();
         if (result.success) {
           console.log('✅ Seed completed. Reloading services...');
-          // Reload services after seeding
-          await this.components.services.init();
+          await this.components.services.refreshServices();
           showNotification('✅ Примерни данни добавени!', 'success', 3000);
         }
       }
@@ -106,6 +105,11 @@ class App {
         servicesSection.scrollIntoView({ behavior: 'smooth' });
       }
     } else if (hash === 'bookings') {
+      if (!store.getState().user) {
+        document.getElementById('bookings')?.classList.add('hidden');
+        return;
+      }
+
       const bookingsSection = document.getElementById('bookings');
       if (bookingsSection) {
         bookingsSection.classList.remove('hidden');
