@@ -1,0 +1,8 @@
+{
+  "name": "beauty-studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "demo:reset": "node scripts/reset-demo-firebase.mjs"
+  }
+}

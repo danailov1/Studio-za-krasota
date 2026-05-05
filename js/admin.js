@@ -1,7 +1,6 @@
 import AdminComponent from './components/admin.component.js';
 import store from './state/store.js';
 import authService from './services/auth.service.js';
-import { seedDatabase } from './utils/seed.js';
 import { showNotification } from './utils/helpers.js';
 import { getCurrentTheme, initTheme, toggleTheme } from './utils/theme.js';
 
@@ -60,9 +59,6 @@ class AdminApp {
 
       // Setup admin header with user info
       this.setupAdminHeader(state.user);
-
-      // Ensure we have data
-      await this.ensureAdminData();
 
       // Initialize admin component
       this.components.admin = new AdminComponent();
@@ -135,25 +131,6 @@ class AdminApp {
     } catch (error) {
       console.error('Logout error:', error);
       showNotification('Грешка при излизане', 'error');
-    }
-  }
-
-  async ensureAdminData() {
-    try {
-      const state = store.getState();
-      if (state.services.length === 0) {
-        console.log('🌱 No services in admin. Auto-seeding...');
-        const result = await seedDatabase();
-        if (result.success) {
-          showNotification('✅ Примерни данни добавени успешно!', 'success');
-          // Reload services in store
-          const dataService = await import('./services/data.service.js').then(m => m.default);
-          const services = await dataService.getServices();
-          store.setServices(services);
-        }
-      }
-    } catch (error) {
-      console.error('Error ensuring admin data:', error);
     }
   }
 

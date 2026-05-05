@@ -4,7 +4,6 @@ import BookingComponent from './components/booking.component.js';
 import CalendarComponent from './components/calendar.component.js';
 import store from './state/store.js';
 import authService from './services/auth.service.js';
-import { seedDatabase } from './utils/seed.js';
 import { showNotification } from './utils/helpers.js';
 import { initTheme } from './utils/theme.js';
 
@@ -40,9 +39,6 @@ class App {
       await this.components.calendar.init();
       console.log('✅ Components initialized');
 
-      // Check if we need to seed initial data (deferred)
-      requestAnimationFrame(() => this.ensureDataExists());
-
       // Subscribe to state changes
       this.subscribeToStateChanges();
 
@@ -76,23 +72,6 @@ class App {
         document.getElementById('booking-section')?.classList.add('hidden');
       }
     });
-  }
-
-  async ensureDataExists() {
-    try {
-      const state = store.getState();
-      if (state.services.length === 0) {
-        console.log('🌱 No services found. Auto-seeding database...');
-        const result = await seedDatabase();
-        if (result.success) {
-          console.log('✅ Seed completed. Reloading services...');
-          await this.components.services.refreshServices();
-          showNotification('✅ Примерни данни добавени!', 'success', 3000);
-        }
-      }
-    } catch (error) {
-      console.error('⚠️ Error checking/seeding data:', error);
-    }
   }
 
   handleNavigation() {

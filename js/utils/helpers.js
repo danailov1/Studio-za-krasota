@@ -71,7 +71,10 @@ export function addMinutes(timeStr, minutesToAdd) {
 
 // Format price
 export function formatPrice(price) {
-  return `${Number(price).toFixed(2)} лв`;
+  return new Intl.NumberFormat('bg-BG', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(Number(price) || 0);
 }
 
 // Get day name (BG)

@@ -249,7 +249,7 @@ class AdminComponent {
 
         <div class="form-row">
           <div class="form-group">
-            <label for="service-price">Цена (лв)</label>
+            <label for="service-price">Цена (€)</label>
             <input type="number" id="service-price" name="price" step="0.01" value="${service?.price ?? ''}" required>
           </div>
 

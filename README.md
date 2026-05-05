@@ -80,13 +80,13 @@ npx http-server -p 8000
    - Кликнете "Администрация" в навигацията (видимо само за администратори)
    - Или посетете директно `/admin.html`
 
-3. **Завантажване на примерни данни**
-   - В администраторския панел ще видите автоматично зареждане на примерни услуги
-   - Ако не се зарежат, отворете браузърната конзола (F12) и изпълнете:
-     ```javascript
-     import { seedDatabase } from './js/utils/seed.js'; 
-     seedDatabase().then(r => console.log(r));
+3. **Зареждане на демо данни**
+   - Приложението вече не добавя примерни данни автоматично от браузъра.
+   - За пълен reset на Firestore и презапис с нови демо данни изпълнете:
+     ```bash
+     npm run demo:reset
      ```
+   - Командата изчиства колекциите `bookings`, `services`, `users`, `schedule`, `settings` и създава нови демо акаунти, услуги, настройки и резервации директно във Firebase.
 
 4. **Контролен панел**
    - Преглед на статистика и графики
@@ -174,7 +174,7 @@ beauty-studio/
 
 ### Настройки
 - Конфигуриране на работното време (начало/край)
-- Конфигуриране на продължителност на слотовете
+- Конфигуриране на продължителност на процедури
 - Експортиране на данни
 - Изтриване на минали резервации
 
@@ -196,10 +196,6 @@ beauty-studio/
 ## Полезни скриптове за конзолата
 
 ```javascript
-// Зареждане на примерни данни
-import { seedDatabase } from './js/utils/seed.js';
-seedDatabase();
-
 // Достъп до приложението
 window.app
 window.adminApp
@@ -213,6 +209,18 @@ import authService from './js/services/auth.service.js';
 import bookingService from './js/services/booking.service.js';
 import dataService from './js/services/data.service.js';
 ```
+
+## Демо акаунти
+
+След `npm run demo:reset` ще имате следните акаунти:
+
+- Администратор: `admin.demo.studiobabb1@example.com` / `DemoAdmin123!`
+- Потребители: `kalina.demo.studiobabb1@example.com` / `DemoUser123!`
+- Потребители: `elena.demo.studiobabb1@example.com` / `DemoUser123!`
+- Потребители: `viktoria.demo.studiobabb1@example.com` / `DemoUser123!`
+- Потребители: `simona.demo.studiobabb1@example.com` / `DemoUser123!`
+
+Приложението вече не държи демо потребители в browser-side код. Данните за демо средата се създават само чрез локалния reset script и после се четат от Firebase.
 
 ## Интеграция
 
